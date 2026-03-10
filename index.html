@@ -1145,6 +1145,12 @@ async function fetchEpisodes(podId) {
       await mergeSpotifyEpisodes(podId, pod.spotifyUrl, newEps);
     }
 
+    // sort all episodes by date, newest first
+    newEps.sort((a, b) => {
+      const da = new Date(a.date || 0);
+      const db = new Date(b.date || 0);
+      return db - da;
+    });
     episodeCache[podId] = newEps;
     saveLocal();
     if (currentPodcastId === podId && currentView === 'podcast') renderPodcastDetail();
