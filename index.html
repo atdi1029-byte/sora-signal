@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0612">
+<title>Sora Signal</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+/* ===== RESET & BASE ===== */
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0612;
+  --bg2:#110a1e;
+  --bg3:#1a0f2e;
+  --card:#130b22;
+  --card-hover:#1e1238;
+  --text:#e8dff5;
+  --text2:#8070a0;
+  --accent:#00d4ff;
+  --accent2:#b44dff;
+  --accent3:#ff2d95;
+  --green:#39ff14;
+  --red:#ff2d55;
+  --orange:#ff9f1c;
+  --gold:#ffd700;
+  --border:#2a1a4a;
+  --glass:rgba(10,6,18,0.9);
+  --glow:0 0 12px rgba(0,212,255,0.25),0 0 40px rgba(0,212,255,0.1);
+  --glow-pink:0 0 12px rgba(255,45,149,0.3),0 0 40px rgba(255,45,149,0.1);
+  --glow-purple:0 0 12px rgba(180,77,255,0.3),0 0 40px rgba(180,77,255,0.1);
+  --neon-cyan:0 0 4px #00d4ff,0 0 12px rgba(0,212,255,0.4),0 0 30px rgba(0,212,255,0.15);
+  --neon-pink:0 0 4px #ff2d95,0 0 12px rgba(255,45,149,0.4),0 0 30px rgba(255,45,149,0.15);
+  --neon-orange:0 0 4px #ff9f1c,0 0 12px rgba(255,159,28,0.4),0 0 30px rgba(255,159,28,0.15);
+  --neon-green:0 0 4px #39ff14,0 0 12px rgba(57,255,20,0.4),0 0 30px rgba(57,255,20,0.15);
+  --radius:12px;
+  --radius-sm:8px;
+  --radius-lg:16px;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--text);overflow:hidden;-webkit-tap-highlight-color:transparent}
+html{background:url('bg.webp') center/cover no-repeat fixed;background-color:var(--bg)}
+body{display:flex;flex-direction:column;background:rgba(10,6,18,0.35)}
+input,button,select{font-family:var(--font);outline:none;border:none;background:none;color:var(--text)}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--accent2);border-radius:4px}
+
+/* ===== HEADER ===== */
+.header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;background:var(--glass);
+  border-bottom:1px solid var(--border);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  position:relative;z-index:100;
+}
+.header h1{font-size:18px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+.header h1 span{color:var(--accent);text-shadow:var(--neon-cyan)}
+.header-actions{display:flex;gap:8px}
+.header-btn{
+  width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg3);border:1px solid var(--border);transition:all .2s;
+}
+.header-btn:hover,.header-btn:active{background:rgba(255,45,149,0.15);border-color:var(--accent3);color:var(--accent3);box-shadow:var(--neon-pink)}
+.header-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ===== VIEWS ===== */
+.views{flex:1;overflow:hidden;position:relative}
+.view{position:absolute;inset:0;overflow-y:auto;padding:16px;display:none;-webkit-overflow-scrolling:touch}
+.view.active{display:block}
+
+/* ===== SEARCH BAR ===== */
+.search-wrap{position:relative;margin-bottom:16px}
+.search-wrap input{
+  width:100%;padding:12px 16px 12px 42px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius);font-size:15px;color:var(--text);
+  transition:border-color .2s;
+}
+.search-wrap input:focus{border-color:var(--accent);box-shadow:var(--neon-cyan)}
+.search-wrap input::placeholder{color:var(--text2)}
+.search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;stroke:var(--text2);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ===== FOLDER FILTER ===== */
+.folder-bar{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.folder-bar::-webkit-scrollbar{display:none}
+.folder-chip{
+  flex-shrink:0;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;
+  background:var(--bg3);color:var(--text2);border:1px solid var(--border);
+  transition:all .2s;white-space:nowrap;
+}
+.folder-chip.active{background:rgba(0,212,255,0.12);color:var(--accent);border-color:var(--accent);box-shadow:var(--neon-cyan)}
+
+/* ===== PODCAST GRID (LIBRARY) ===== */
+.podcast-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.podcast-card{
+  background:var(--card);border-radius:var(--radius);overflow:hidden;
+  border:1px solid var(--border);transition:all .2s;position:relative;
+}
+.podcast-card:active{transform:scale(0.97);border-color:var(--accent3);box-shadow:var(--neon-pink)}
+.podcast-card img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.podcast-card .card-info{padding:10px}
+.podcast-card .card-title{font-size:13px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.podcast-card .card-author{font-size:11px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.podcast-card .card-badge{
+  position:absolute;top:8px;right:8px;
+  background:var(--accent3);color:#fff;
+  font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;
+  min-width:20px;text-align:center;box-shadow:var(--neon-pink);
+}
+.podcast-card .card-folder{
+  font-size:10px;color:var(--accent2);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;
+}
+
+/* ===== SEARCH RESULTS ===== */
+.search-results{display:flex;flex-direction:column;gap:10px}
+.search-result{
+  display:flex;gap:12px;padding:12px;background:var(--card);
+  border-radius:var(--radius);border:1px solid var(--border);
+  align-items:center;transition:all .2s;
+}
+.search-result:active{border-color:var(--accent)}
+.search-result img{width:60px;height:60px;border-radius:var(--radius-sm);object-fit:cover;flex-shrink:0}
+.search-result .sr-info{flex:1;min-width:0}
+.search-result .sr-title{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-result .sr-author{font-size:12px;color:var(--text2);margin-top:2px}
+.search-result .sr-genre{font-size:11px;color:var(--accent2);margin-top:4px}
+.search-result .sr-sub-btn{
+  flex-shrink:0;padding:8px 14px;border-radius:var(--radius-sm);
+  background:transparent;color:var(--accent3);font-size:12px;font-weight:700;
+  border:1px solid var(--accent3);transition:all .2s;
+}
+.search-result .sr-sub-btn:active{transform:scale(0.95);background:rgba(255,45,149,0.15);box-shadow:var(--neon-pink)}
+.search-result .sr-sub-btn.subscribed{background:rgba(57,255,20,0.1);color:var(--green);border-color:var(--green);box-shadow:var(--neon-green);pointer-events:none}
+
+/* ===== PODCAST DETAIL PAGE ===== */
+.pod-header{
+  display:flex;gap:14px;margin-bottom:20px;align-items:flex-start;
+}
+.pod-header img{width:100px;height:100px;border-radius:var(--radius);object-fit:cover;flex-shrink:0;box-shadow:0 0 20px rgba(180,77,255,0.3),0 0 40px rgba(180,77,255,0.1);border:1px solid var(--border)}
+.pod-header .pod-meta{flex:1;min-width:0}
+.pod-header .pod-title{font-size:20px;font-weight:700;line-height:1.2}
+.pod-header .pod-author{font-size:13px;color:var(--text2);margin-top:4px}
+.pod-platforms{display:flex;gap:8px;margin-top:8px}
+.pod-platforms .plat-icon{
+  width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  background:var(--bg3);border:1px solid var(--border);
+}
+.pod-platforms .plat-icon.active.rss{border-color:var(--orange);background:rgba(255,159,28,0.1);color:var(--orange)}
+.pod-platforms .plat-icon.active.yt{border-color:var(--red);background:rgba(255,45,85,0.1);color:var(--red)}
+.pod-platforms .plat-icon.active.sp{border-color:var(--green);background:rgba(57,255,20,0.1);color:var(--green)}
+.pod-platforms .plat-icon.active{border-color:var(--accent);background:rgba(0,212,255,0.1)}
+.pod-platforms .plat-icon svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+.pod-actions{display:flex;gap:8px;margin-top:10px}
+.pod-actions button{
+  padding:6px 14px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;
+  background:var(--bg3);border:1px solid var(--border);color:var(--text2);transition:all .2s;
+}
+.pod-actions button.active{color:var(--accent);border-color:var(--accent)}
+
+/* ===== EPISODE LIST ===== */
+.ep-filters{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.ep-filters::-webkit-scrollbar{display:none}
+.ep-filter{
+  flex-shrink:0;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;
+  background:var(--bg3);color:var(--text2);border:1px solid var(--border);transition:all .2s;
+}
+.ep-filter.active{color:var(--accent3);border-color:var(--accent3);background:rgba(255,45,149,0.08);box-shadow:var(--neon-pink)}
+.ep-list{display:flex;flex-direction:column;gap:8px;padding-bottom:100px}
+.ep-item{
+  display:flex;gap:12px;padding:12px;background:var(--card);
+  border-radius:var(--radius);border:1px solid var(--border);
+  align-items:center;transition:all .2s;
+}
+.ep-item.played{opacity:0.5}
+.ep-item.played .ep-title{text-decoration:line-through}
+.ep-item .ep-art{width:44px;height:44px;border-radius:var(--radius-sm);object-fit:cover;flex-shrink:0}
+.ep-item .ep-info{flex:1;min-width:0}
+.ep-item .ep-title{font-size:13px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ep-item .ep-date{font-size:11px;color:var(--text2);margin-top:2px}
+.ep-item .ep-duration{font-size:11px;color:var(--text2)}
+.ep-item .ep-sources{display:flex;gap:4px;margin-top:4px}
+.ep-item .ep-src{
+  width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;
+  background:var(--bg3);transition:all .2s;
+}
+.ep-item .ep-src:active{background:rgba(180,77,255,0.2);color:var(--accent2);box-shadow:var(--glow-purple)}
+.ep-item .ep-src svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2}
+.ep-item .ep-check{
+  width:32px;height:32px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--border);transition:all .2s;
+}
+.ep-item .ep-check.checked{border-color:var(--green);background:rgba(57,255,20,0.15);color:var(--green);box-shadow:var(--neon-green)}
+.ep-item .ep-check svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* ===== NOW PLAYING BAR ===== */
+.player-bar{
+  display:none;position:fixed;bottom:60px;left:0;right:0;
+  background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);padding:8px 16px;z-index:90;
+  transition:all .3s;
+}
+.player-bar.visible{display:flex;align-items:center;gap:10px}
+.player-bar img{width:40px;height:40px;border-radius:var(--radius-sm);object-fit:cover}
+.player-bar .pb-info{flex:1;min-width:0}
+.player-bar .pb-title{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player-bar .pb-podcast{font-size:10px;color:var(--text2)}
+.player-bar .pb-controls{display:flex;gap:8px;align-items:center}
+.player-bar .pb-btn{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.player-bar .pb-btn.play{background:var(--accent3);color:#fff;box-shadow:var(--neon-pink)}
+.player-bar .pb-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ===== FULL PLAYER ===== */
+.full-player{
+  display:none;position:fixed;inset:0;z-index:200;
+  background:var(--bg);flex-direction:column;align-items:center;
+  padding:40px 24px 24px;
+}
+.full-player.active{display:flex}
+.fp-close{position:absolute;top:12px;left:16px;padding:8px}
+.fp-close svg{width:24px;height:24px;stroke:var(--text2);fill:none;stroke-width:2}
+.fp-art{width:260px;height:260px;border-radius:var(--radius-lg);object-fit:cover;box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 30px rgba(180,77,255,0.2);border:1px solid var(--border);margin-bottom:24px}
+.fp-title{font-size:18px;font-weight:700;text-align:center;line-height:1.3;max-width:100%}
+.fp-podcast{font-size:13px;color:var(--text2);margin-top:4px}
+.fp-progress{width:100%;margin-top:24px}
+.fp-progress input[type=range]{
+  width:100%;-webkit-appearance:none;height:4px;border-radius:2px;
+  background:var(--border);outline:none;
+}
+.fp-progress input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--accent3);cursor:pointer;box-shadow:var(--neon-pink);
+}
+.fp-times{display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--text2)}
+.fp-controls{display:flex;align-items:center;gap:24px;margin-top:24px}
+.fp-controls button{display:flex;align-items:center;justify-content:center}
+.fp-controls button svg{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fp-ctrl-skip svg{width:24px;height:24px}
+.fp-ctrl-play{
+  width:64px;height:64px;border-radius:50%;
+  background:var(--accent3);color:#fff;
+  box-shadow:var(--neon-pink);
+}
+.fp-ctrl-play svg{width:28px;height:28px}
+.fp-speed{
+  margin-top:16px;padding:6px 14px;border-radius:20px;
+  background:rgba(0,212,255,0.08);font-size:12px;font-weight:600;color:var(--accent);
+  border:1px solid rgba(0,212,255,0.3);
+}
+.fp-extras{display:flex;gap:16px;margin-top:16px}
+.fp-extras button{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px}
+.fp-extras button svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+
+/* ===== SUBSCRIBE MODAL ===== */
+.modal-overlay{
+  display:none;position:fixed;inset:0;z-index:300;
+  background:rgba(5,2,15,0.8);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  align-items:flex-end;justify-content:center;
+}
+.modal-overlay.active{display:flex}
+.modal{
+  width:100%;max-width:500px;background:var(--bg2);
+  border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+  padding:24px 16px 32px;max-height:80vh;overflow-y:auto;
+}
+.modal h3{font-size:16px;font-weight:700;margin-bottom:16px}
+.modal label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;margin-top:12px}
+.modal input,.modal select{
+  width:100%;padding:10px 12px;background:var(--bg3);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  font-size:14px;color:var(--text);
+}
+.modal input:focus{border-color:var(--accent2);box-shadow:var(--glow-purple)}
+.modal .modal-btns{display:flex;gap:8px;margin-top:20px}
+.modal .modal-btns button{
+  flex:1;padding:12px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;
+  transition:all .2s;
+}
+.modal .btn-cancel{background:var(--bg3);color:var(--text2)}
+.modal .btn-save{background:var(--accent3);color:#fff;box-shadow:var(--neon-pink)}
+
+/* ===== SETTINGS VIEW ===== */
+.settings-section{margin-bottom:24px}
+.settings-section h3{font-size:14px;font-weight:700;color:var(--accent3);margin-bottom:12px;text-transform:uppercase;letter-spacing:1.5px;text-shadow:var(--neon-pink)}
+.settings-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:12px;background:var(--card);border-radius:var(--radius-sm);
+  border:1px solid var(--border);margin-bottom:8px;
+}
+.settings-row .sr-label{font-size:14px}
+.settings-row .sr-value{font-size:13px;color:var(--text2)}
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav{
+  display:flex;align-items:center;justify-content:space-around;
+  padding:8px 0 env(safe-area-inset-bottom,8px);
+  background:rgba(10,6,18,0.95);border-top:1px solid var(--border);
+  position:relative;z-index:80;
+}
+.nav-btn{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:4px 16px;color:var(--text2);transition:all .2s;
+}
+.nav-btn.active{color:var(--accent);filter:drop-shadow(0 0 6px rgba(0,212,255,0.4))}
+.nav-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nav-btn span{font-size:10px;font-weight:600}
+
+/* ===== EMPTY STATE ===== */
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:60vh;text-align:center;
+}
+.empty-state svg{width:64px;height:64px;stroke:var(--border);fill:none;stroke-width:1.5;margin-bottom:16px}
+.empty-state p{color:var(--text2);font-size:14px;line-height:1.5}
+.empty-state .es-btn{
+  margin-top:16px;padding:10px 20px;border-radius:var(--radius);
+  background:transparent;color:var(--accent);font-size:14px;font-weight:600;
+  border:1px solid var(--accent);box-shadow:var(--neon-cyan);
+}
+
+/* ===== TOAST ===== */
+.toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(100px);
+  background:var(--bg3);color:var(--accent);padding:10px 20px;
+  border-radius:var(--radius);font-size:13px;font-weight:600;
+  border:1px solid var(--accent3);z-index:400;
+  box-shadow:var(--neon-pink);
+  transition:transform .3s ease;pointer-events:none;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ===== BACK BUTTON ===== */
+.back-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer}
+.back-row svg{width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.back-row span{font-size:13px;color:var(--accent);font-weight:600}
+
+/* ===== LOADING ===== */
+.spinner{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent3);border-radius:50%;animation:spin .8s linear infinite;margin:20px auto;filter:drop-shadow(0 0 4px rgba(255,45,149,0.5))}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{text-align:center;color:var(--text2);font-size:13px;margin-top:8px}
+
+/* ===== NEON GLOW ACCENTS ===== */
+.podcast-card{border:1px solid rgba(180,77,255,0.15)}
+.podcast-card:hover{border-color:rgba(180,77,255,0.3)}
+.search-result{border:1px solid rgba(180,77,255,0.1)}
+.ep-item{border:1px solid rgba(180,77,255,0.1)}
+.settings-row{border:1px solid rgba(180,77,255,0.1)}
+.modal{border:1px solid var(--border);border-bottom:none}
+.pod-actions button.active{color:var(--accent3);border-color:var(--accent3)}
+
+/* ===== SCANLINE OVERLAY (subtle) ===== */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
+  opacity:0.4;
+}
+
+/* ===== CARD GLOW ON HOVER ===== */
+.podcast-card::after{
+  content:'';position:absolute;inset:-1px;border-radius:var(--radius);
+  background:linear-gradient(135deg,rgba(0,212,255,0.05),rgba(255,45,149,0.05));
+  opacity:0;transition:opacity .3s;pointer-events:none;
+}
+.podcast-card:active::after{opacity:1}
+
+@media(min-width:500px){
+  .podcast-grid{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+  <h1><span>Sora</span> Signal</h1>
+  <div class="header-actions">
+    <button class="header-btn" onclick="showAddManual()" title="Add manually">
+      <svg><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <button class="header-btn" onclick="showView('settings')" title="Settings">
+      <svg><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ===== VIEWS CONTAINER ===== -->
+<div class="views">
+
+  <!-- LIBRARY VIEW -->
+  <div id="viewLibrary" class="view active">
+    <div class="search-wrap">
+      <svg><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="Search podcasts..." oninput="onSearchInput(this.value)">
+    </div>
+    <div id="searchResults" class="search-results" style="display:none"></div>
+    <div id="folderBar" class="folder-bar"></div>
+    <div id="podcastGrid" class="podcast-grid"></div>
+    <div id="emptyLibrary" class="empty-state" style="display:none">
+      <svg><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+      <p>No podcasts yet.<br>Search above to find and subscribe!</p>
+    </div>
+  </div>
+
+  <!-- PODCAST DETAIL VIEW -->
+  <div id="viewPodcast" class="view">
+    <div class="back-row" onclick="showView('library')">
+      <svg><polyline points="15 18 9 12 15 6"/></svg>
+      <span>Library</span>
+    </div>
+    <div id="podDetail"></div>
+  </div>
+
+  <!-- SETTINGS VIEW -->
+  <div id="viewSettings" class="view">
+    <div class="back-row" onclick="showView('library')">
+      <svg><polyline points="15 18 9 12 15 6"/></svg>
+      <span>Library</span>
+    </div>
+    <div class="settings-section">
+      <h3>Folders</h3>
+      <div id="folderList"></div>
+      <div style="margin-top:8px">
+        <input type="text" id="newFolderInput" placeholder="New folder name..." style="width:calc(100% - 60px);padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px">
+        <button onclick="addFolder()" style="padding:10px 14px;background:var(--accent);color:var(--bg);border-radius:var(--radius-sm);font-size:13px;font-weight:600;margin-left:4px">Add</button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <h3>YouTube App</h3>
+      <div class="settings-row">
+        <span class="sr-label">Open links in</span>
+        <select id="ytAppSelect" onchange="saveYtApp()" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;color:var(--text)">
+          <option value="default">Default (Browser/YouTube)</option>
+          <option value="revanced">ReVanced</option>
+          <option value="newpipe">NewPipe</option>
+          <option value="custom">Custom package...</option>
+        </select>
+      </div>
+      <div id="ytCustomRow" style="display:none;margin-top:8px">
+        <input type="text" id="ytCustomPkg" placeholder="com.example.youtube" style="width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+        <button onclick="saveYtApp()" style="margin-top:4px;padding:8px 14px;background:var(--accent);color:var(--bg);border-radius:var(--radius-sm);font-size:12px;font-weight:600">Save</button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <h3>Cloud Sync</h3>
+      <div class="settings-row">
+        <span class="sr-label">Status</span>
+        <span class="sr-value" id="syncStatus">Not configured</span>
+      </div>
+      <div style="margin-top:8px">
+        <label style="font-size:12px;color:var(--text2);margin-bottom:4px;display:block">Apps Script URL</label>
+        <input type="text" id="syncUrlInput" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px">
+        <button onclick="saveSyncUrl()" style="margin-top:8px;padding:10px 14px;background:var(--accent);color:var(--bg);border-radius:var(--radius-sm);font-size:13px;font-weight:600">Save & Sync</button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <h3>About</h3>
+      <div class="settings-row">
+        <span class="sr-label">Version</span>
+        <span class="sr-value">1.0</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== PLAYER BAR ===== -->
+<div class="player-bar" id="playerBar">
+  <img id="pbArt" src="" alt="">
+  <div class="pb-info" onclick="openFullPlayer()">
+    <div class="pb-title" id="pbTitle"></div>
+    <div class="pb-podcast" id="pbPodcast"></div>
+  </div>
+  <div class="pb-controls">
+    <button class="pb-btn" onclick="seekAudio(-15)"><svg><polygon points="11 19 2 12 11 5"/><text x="14" y="16" fill="currentColor" stroke="none" font-size="8" font-weight="700">15</text></svg></button>
+    <button class="pb-btn play" id="pbPlayBtn" onclick="togglePlay()"><svg id="pbPlayIcon"><polygon points="5 3 19 12 5 21" fill="currentColor" stroke="none"/></svg></button>
+    <button class="pb-btn" onclick="seekAudio(30)"><svg><polygon points="13 19 22 12 13 5"/><text x="1" y="16" fill="currentColor" stroke="none" font-size="8" font-weight="700">30</text></svg></button>
+  </div>
+</div>
+
+<!-- ===== FULL PLAYER ===== -->
+<div class="full-player" id="fullPlayer">
+  <button class="fp-close" onclick="closeFullPlayer()"><svg><polyline points="15 18 9 12 15 6"/></svg></button>
+  <img class="fp-art" id="fpArt" src="" alt="">
+  <div class="fp-title" id="fpTitle"></div>
+  <div class="fp-podcast" id="fpPodcast"></div>
+  <div class="fp-progress">
+    <input type="range" id="fpSeek" min="0" max="100" value="0" oninput="seekTo(this.value)">
+    <div class="fp-times"><span id="fpCur">0:00</span><span id="fpDur">0:00</span></div>
+  </div>
+  <div class="fp-controls">
+    <button class="fp-ctrl-skip" onclick="seekAudio(-15)"><svg><polygon points="11 19 2 12 11 5"/></svg></button>
+    <button class="fp-ctrl-play" id="fpPlayBtn" onclick="togglePlay()"><svg id="fpPlayIcon"><polygon points="5 3 19 12 5 21" fill="currentColor" stroke="none"/></svg></button>
+    <button class="fp-ctrl-skip" onclick="seekAudio(30)"><svg><polygon points="13 19 22 12 13 5"/></svg></button>
+  </div>
+  <button class="fp-speed" id="fpSpeed" onclick="cycleSpeed()">1x</button>
+  <div class="fp-extras">
+    <button onclick="toggleSleepTimer()"><svg><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Sleep</button>
+  </div>
+</div>
+
+<!-- ===== SUBSCRIBE MODAL ===== -->
+<div class="modal-overlay" id="subModal">
+  <div class="modal">
+    <h3 id="subModalTitle">Subscribe</h3>
+    <div id="subModalArt" style="text-align:center;margin-bottom:12px"></div>
+    <label>Folder</label>
+    <select id="subFolder"></select>
+    <label>YouTube Channel URL <span style="color:var(--text2)">(optional)</span></label>
+    <input type="text" id="subYoutube" placeholder="https://youtube.com/@channel or channel ID">
+    <label>Spotify Show URL <span style="color:var(--text2)">(optional)</span></label>
+    <input type="text" id="subSpotify" placeholder="https://open.spotify.com/show/...">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeSubModal()">Cancel</button>
+      <button class="btn-save" onclick="confirmSubscribe()">Subscribe</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADD MANUAL MODAL ===== -->
+<div class="modal-overlay" id="manualModal">
+  <div class="modal">
+    <h3>Add Podcast Manually</h3>
+    <label>Podcast Name</label>
+    <input type="text" id="manualName" placeholder="Podcast name">
+    <label>RSS Feed URL</label>
+    <input type="text" id="manualRss" placeholder="https://feeds.example.com/podcast.xml">
+    <label>Folder</label>
+    <select id="manualFolder"></select>
+    <label>YouTube Channel URL <span style="color:var(--text2)">(optional)</span></label>
+    <input type="text" id="manualYoutube" placeholder="https://youtube.com/@channel">
+    <label>Spotify Show URL <span style="color:var(--text2)">(optional)</span></label>
+    <input type="text" id="manualSpotify" placeholder="https://open.spotify.com/show/...">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeManualModal()">Cancel</button>
+      <button class="btn-save" onclick="confirmManual()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="toast" id="toast"></div>
+
+<!-- ===== BOTTOM NAV ===== -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-view="library" onclick="showView('library',this)">
+    <svg><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span>Library</span>
+  </button>
+  <button class="nav-btn" data-view="settings" onclick="showView('settings',this)">
+    <svg><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <span>Settings</span>
+  </button>
+</nav>
+
+<!-- ===== AUDIO ELEMENT ===== -->
+<audio id="audioEl" preload="none"></audio>
+
+<script>
+/* ===== STATE ===== */
+let podcasts = [];           // subscribed podcasts
+let folders = ['All'];       // user folders
+let episodeCache = {};       // podcastId -> episodes[]
+let currentView = 'library';
+let currentPodcastId = null;
+let currentFilter = 'all';   // all|unplayed|played|pinned
+let currentFolder = 'All';
+let pendingSub = null;        // podcast being subscribed
+let playerState = { podcastId:null, episodeGuid:null, currentTime:0, playbackRate:1 };
+let sleepTimerId = null;
+let syncUrl = '';
+let syncReady = false;
+let pushTimeout = null;
+let ytApp = 'default'; // default|revanced|newpipe|custom
+let ytCustomPkg = '';
+
+const LS_PODCASTS = 'pcc_podcasts_v1';
+const LS_EPISODES = 'pcc_episodes_v1_';
+const LS_FOLDERS = 'pcc_folders_v1';
+const LS_PLAYER = 'pcc_player_v1';
+const LS_SYNC_URL = 'pcc_sync_url';
+const LS_YT_APP = 'pcc_yt_app';
+const LS_YT_PKG = 'pcc_yt_pkg';
+
+const YT_PACKAGES = {
+  revanced: 'app.revanced.android.youtube',
+  newpipe: 'org.schabi.newpipe',
+};
+
+const audio = document.getElementById('audioEl');
+
+/* ===== SVG HELPERS ===== */
+const SVG_PLAY = '<polygon points="5 3 19 12 5 21" fill="currentColor" stroke="none"/>';
+const SVG_PAUSE = '<rect x="6" y="4" width="4" height="16" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" fill="currentColor" stroke="none"/>';
+const SVG_CHECK = '<polyline points="20 6 9 17 4 12"/>';
+const SVG_RSS = '<path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/>';
+const SVG_YT = '<polygon points="5 3 19 12 5 21"/>';
+const SVG_SPOTIFY = '<circle cx="12" cy="12" r="10"/><path d="M8 15c4-1 8 0 8 0"/><path d="M7 12c5-1.5 10 0 10 0"/><path d="M6 9c5.5-2 12 0 12 0"/>';
+const SVG_PIN = '<path d="M12 17v5"/><path d="M5 17h14"/><path d="M7.5 17l1-7h7l1 7"/><path d="M9.5 10V4.5a2.5 2.5 0 0 1 5 0V10"/>';
+
+/* ===== INIT ===== */
+function init() {
+  loadLocal();
+  renderLibrary();
+  renderFolders();
+  restorePlayer();
+  syncUrl = localStorage.getItem(LS_SYNC_URL) || '';
+  if (syncUrl) {
+    document.getElementById('syncUrlInput').value = syncUrl;
+    document.getElementById('syncStatus').textContent = 'Connected';
+    pullFromCloud();
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && syncUrl) pullFromCloud();
+  });
+  loadYtApp();
+  syncReady = true;
+}
+
+/* ===== LOCAL STORAGE ===== */
+function loadLocal() {
+  try { podcasts = JSON.parse(localStorage.getItem(LS_PODCASTS)) || []; } catch(e) { podcasts = []; }
+  try { folders = JSON.parse(localStorage.getItem(LS_FOLDERS)) || ['All']; } catch(e) { folders = ['All']; }
+  if (!folders.includes('All')) folders.unshift('All');
+  try { playerState = JSON.parse(localStorage.getItem(LS_PLAYER)) || playerState; } catch(e) {}
+  // load episode caches
+  podcasts.forEach(p => {
+    try { episodeCache[p.id] = JSON.parse(localStorage.getItem(LS_EPISODES + p.id)) || []; } catch(e) { episodeCache[p.id] = []; }
+  });
+}
+
+function saveLocal() {
+  localStorage.setItem(LS_PODCASTS, JSON.stringify(podcasts));
+  localStorage.setItem(LS_FOLDERS, JSON.stringify(folders));
+  localStorage.setItem(LS_PLAYER, JSON.stringify(playerState));
+  // save episode caches
+  Object.keys(episodeCache).forEach(id => {
+    localStorage.setItem(LS_EPISODES + id, JSON.stringify(episodeCache[id]));
+  });
+  schedulePush();
+}
+
+/* ===== CLOUD SYNC ===== */
+function fireGet(url) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = img.onerror = resolve;
+    setTimeout(resolve, 5000);
+    img.src = url;
+  });
+}
+
+function jsonpFetch(url, cb) {
+  const cbName = '_pccCb_' + Date.now();
+  const script = document.createElement('script');
+  let done = false;
+  window[cbName] = function(resp) { done = true; delete window[cbName]; script.remove(); cb(null, resp); };
+  script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+  script.onerror = function() { if (!done) { delete window[cbName]; script.remove(); cb('Failed'); } };
+  setTimeout(function() { if (!done) { delete window[cbName]; script.remove(); cb('Timeout'); } }, 15000);
+  document.head.appendChild(script);
+}
+
+function schedulePush() {
+  if (!syncReady || !syncUrl) return;
+  clearTimeout(pushTimeout);
+  pushTimeout = setTimeout(() => pushToCloud(), 2000);
+}
+
+function pushToCloud() {
+  if (!syncUrl || podcasts.length === 0) return;
+  const data = { podcasts, folders, episodePlayed: {} };
+  // collect played/pinned status
+  Object.keys(episodeCache).forEach(id => {
+    data.episodePlayed[id] = (episodeCache[id] || [])
+      .filter(ep => ep.played || ep.pinned)
+      .map(ep => ({ guid: ep.guid, played: ep.played, pinned: ep.pinned, progress: ep.progress || 0 }));
+  });
+  const encoded = encodeURIComponent(JSON.stringify(data));
+  fireGet(syncUrl + '?action=podcast_sync_push&data=' + encoded);
+}
+
+function pullFromCloud() {
+  if (!syncUrl) return;
+  jsonpFetch(syncUrl + '?action=podcast_sync_pull', (err, resp) => {
+    if (err || !resp || !resp.data) return;
+    const cloud = resp.data;
+    if (cloud.podcasts && cloud.podcasts.length > 0) {
+      podcasts = cloud.podcasts;
+      if (cloud.folders) folders = cloud.folders;
+      if (!folders.includes('All')) folders.unshift('All');
+      // merge played status
+      if (cloud.episodePlayed) {
+        Object.keys(cloud.episodePlayed).forEach(id => {
+          const statuses = cloud.episodePlayed[id] || [];
+          const eps = episodeCache[id] || [];
+          statuses.forEach(s => {
+            const ep = eps.find(e => e.guid === s.guid);
+            if (ep) { ep.played = s.played; ep.pinned = s.pinned; ep.progress = s.progress || 0; }
+          });
+          episodeCache[id] = eps;
+        });
+      }
+      localStorage.setItem(LS_PODCASTS, JSON.stringify(podcasts));
+      localStorage.setItem(LS_FOLDERS, JSON.stringify(folders));
+      Object.keys(episodeCache).forEach(id => {
+        localStorage.setItem(LS_EPISODES + id, JSON.stringify(episodeCache[id]));
+      });
+      renderLibrary();
+      renderFolders();
+    }
+  });
+}
+
+function saveSyncUrl() {
+  syncUrl = document.getElementById('syncUrlInput').value.trim();
+  localStorage.setItem(LS_SYNC_URL, syncUrl);
+  if (syncUrl) {
+    document.getElementById('syncStatus').textContent = 'Connected';
+    pushToCloud();
+    toast('Sync connected!');
+  } else {
+    document.getElementById('syncStatus').textContent = 'Not configured';
+  }
+}
+
+/* ===== VIEW SWITCHING ===== */
+function showView(name, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const viewId = name === 'library' ? 'viewLibrary' : name === 'podcast' ? 'viewPodcast' : 'viewSettings';
+  document.getElementById(viewId).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else {
+    document.querySelectorAll('.nav-btn').forEach(b => {
+      if (b.dataset.view === name) b.classList.add('active');
+    });
+  }
+  currentView = name;
+  if (name === 'library') {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchResults').style.display = 'none';
+    renderLibrary();
+  }
+  if (name === 'settings') renderSettings();
+}
+
+/* ===== SEARCH (iTunes API) ===== */
+let searchTimeout = null;
+function onSearchInput(val) {
+  clearTimeout(searchTimeout);
+  const q = val.trim();
+  if (!q) {
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('podcastGrid').style.display = '';
+    document.getElementById('folderBar').style.display = '';
+    return;
+  }
+  searchTimeout = setTimeout(() => searchPodcasts(q), 400);
+}
+
+async function searchPodcasts(query) {
+  document.getElementById('searchResults').style.display = 'block';
+  document.getElementById('podcastGrid').style.display = 'none';
+  document.getElementById('folderBar').style.display = 'none';
+  document.getElementById('emptyLibrary').style.display = 'none';
+  document.getElementById('searchResults').innerHTML = '<div class="spinner"></div><div class="loading-text">Searching...</div>';
+
+  try {
+    const resp = await fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(query) + '&media=podcast&entity=podcast&limit=20');
+    const data = await resp.json();
+    renderSearchResults(data.results || []);
+  } catch (e) {
+    document.getElementById('searchResults').innerHTML = '<p style="color:var(--red);text-align:center;padding:20px">Search failed. Check your connection.</p>';
+  }
+}
+
+function renderSearchResults(results) {
+  const el = document.getElementById('searchResults');
+  if (!results.length) {
+    el.innerHTML = '<p style="color:var(--text2);text-align:center;padding:20px">No podcasts found.</p>';
+    return;
+  }
+  el.innerHTML = results.map(r => {
+    const subbed = podcasts.some(p => p.itunesId === r.collectionId);
+    return `<div class="search-result">
+      <img src="${r.artworkUrl100 || ''}" alt="" onerror="this.style.background='var(--bg3)'">
+      <div class="sr-info">
+        <div class="sr-title">${esc(r.collectionName || '')}</div>
+        <div class="sr-author">${esc(r.artistName || '')}</div>
+        <div class="sr-genre">${esc(r.primaryGenreName || '')} &bull; ${r.trackCount || '?'} episodes</div>
+      </div>
+      <button class="sr-sub-btn${subbed ? ' subscribed' : ''}" onclick="startSubscribe(${r.collectionId},'${esc(r.collectionName)}','${esc(r.artistName)}','${r.artworkUrl100||''}','${r.feedUrl||''}','${esc(r.primaryGenreName||'')}')">${subbed ? 'Subscribed' : 'Subscribe'}</button>
+    </div>`;
+  }).join('');
+}
+
+/* ===== SUBSCRIBE FLOW ===== */
+function startSubscribe(itunesId, title, author, artwork, rssUrl, genre) {
+  if (podcasts.some(p => p.itunesId === itunesId)) { toast('Already subscribed!'); return; }
+  pendingSub = { itunesId, title: decEsc(title), author: decEsc(author), artwork: artwork.replace('100x100', '600x600'), rssUrl, genre: decEsc(genre) };
+  document.getElementById('subModalTitle').textContent = 'Subscribe to ' + pendingSub.title;
+  document.getElementById('subModalArt').innerHTML = artwork ? '<img src="' + artwork.replace('100x100','300x300') + '" style="width:120px;height:120px;border-radius:12px">' : '';
+  populateFolderSelect('subFolder');
+  document.getElementById('subYoutube').value = '';
+  document.getElementById('subSpotify').value = '';
+  document.getElementById('subModal').classList.add('active');
+}
+
+function closeSubModal() {
+  document.getElementById('subModal').classList.remove('active');
+  pendingSub = null;
+}
+
+function confirmSubscribe() {
+  if (!pendingSub) return;
+  const pod = {
+    id: 'pod_' + Date.now(),
+    itunesId: pendingSub.itunesId,
+    title: pendingSub.title,
+    author: pendingSub.author,
+    artwork: pendingSub.artwork,
+    rssUrl: pendingSub.rssUrl,
+    genre: pendingSub.genre,
+    folder: document.getElementById('subFolder').value || 'All',
+    youtubeChannelId: extractYTChannelId(document.getElementById('subYoutube').value),
+    youtubeUrl: document.getElementById('subYoutube').value.trim(),
+    spotifyUrl: document.getElementById('subSpotify').value.trim(),
+    addedAt: Date.now()
+  };
+  podcasts.push(pod);
+  episodeCache[pod.id] = [];
+  saveLocal();
+  closeSubModal();
+  toast('Subscribed to ' + pod.title);
+  // fetch episodes in background
+  fetchEpisodes(pod.id);
+  renderLibrary();
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').style.display = 'none';
+  document.getElementById('podcastGrid').style.display = '';
+  document.getElementById('folderBar').style.display = '';
+}
+
+/* ===== MANUAL ADD ===== */
+function showAddManual() {
+  populateFolderSelect('manualFolder');
+  document.getElementById('manualName').value = '';
+  document.getElementById('manualRss').value = '';
+  document.getElementById('manualYoutube').value = '';
+  document.getElementById('manualSpotify').value = '';
+  document.getElementById('manualModal').classList.add('active');
+}
+
+function closeManualModal() { document.getElementById('manualModal').classList.remove('active'); }
+
+function confirmManual() {
+  const name = document.getElementById('manualName').value.trim();
+  const rss = document.getElementById('manualRss').value.trim();
+  if (!name) { toast('Enter a podcast name'); return; }
+  const pod = {
+    id: 'pod_' + Date.now(),
+    itunesId: null,
+    title: name,
+    author: '',
+    artwork: '',
+    rssUrl: rss,
+    genre: '',
+    folder: document.getElementById('manualFolder').value || 'All',
+    youtubeChannelId: extractYTChannelId(document.getElementById('manualYoutube').value),
+    youtubeUrl: document.getElementById('manualYoutube').value.trim(),
+    spotifyUrl: document.getElementById('manualSpotify').value.trim(),
+    addedAt: Date.now()
+  };
+  podcasts.push(pod);
+  episodeCache[pod.id] = [];
+  saveLocal();
+  closeManualModal();
+  toast('Added ' + pod.title);
+  if (rss) fetchEpisodes(pod.id);
+  renderLibrary();
+}
+
+/* ===== LIBRARY RENDER ===== */
+function renderLibrary() {
+  const grid = document.getElementById('podcastGrid');
+  const empty = document.getElementById('emptyLibrary');
+  let filtered = podcasts;
+  if (currentFolder && currentFolder !== 'All') {
+    filtered = podcasts.filter(p => p.folder === currentFolder);
+  }
+  if (!filtered.length) {
+    grid.innerHTML = '';
+    empty.style.display = podcasts.length ? 'none' : '';
+    if (podcasts.length && !filtered.length) {
+      grid.innerHTML = '<p style="color:var(--text2);text-align:center;grid-column:1/-1;padding:40px 0">No podcasts in this folder.</p>';
+    }
+    return;
+  }
+  empty.style.display = 'none';
+  grid.innerHTML = filtered.map(p => {
+    const eps = episodeCache[p.id] || [];
+    const unplayed = eps.filter(e => !e.played).length;
+    return `<div class="podcast-card" onclick="openPodcast('${p.id}')">
+      ${p.artwork ? '<img src="'+p.artwork+'" alt="" onerror="this.style.background=\'var(--bg3)\';this.style.minHeight=\'120px\'">' : '<div style="width:100%;aspect-ratio:1;background:var(--bg3);display:flex;align-items:center;justify-content:center"><svg width="48" height="48" stroke="var(--text2)" fill="none" stroke-width="1.5"><circle cx="24" cy="24" r="20"/><polygon points="18 14 34 24 18 34" fill="var(--text2)" stroke="none"/></svg></div>'}
+      ${unplayed > 0 ? '<div class="card-badge">' + unplayed + '</div>' : ''}
+      <div class="card-info">
+        <div class="card-title">${esc(p.title)}</div>
+        <div class="card-author">${esc(p.author)}</div>
+        ${p.folder && p.folder !== 'All' ? '<div class="card-folder">' + esc(p.folder) + '</div>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ===== FOLDERS ===== */
+function renderFolders() {
+  const bar = document.getElementById('folderBar');
+  const uniqueFolders = ['All', ...folders.filter(f => f !== 'All')];
+  bar.innerHTML = uniqueFolders.map(f =>
+    `<button class="folder-chip${f === currentFolder ? ' active' : ''}" onclick="filterFolder('${esc(f)}')">${esc(f)}</button>`
+  ).join('');
+}
+
+function filterFolder(f) {
+  currentFolder = f;
+  renderFolders();
+  renderLibrary();
+}
+
+function addFolder() {
+  const input = document.getElementById('newFolderInput');
+  const name = input.value.trim();
+  if (!name || folders.includes(name)) { toast(name ? 'Folder exists' : 'Enter a name'); return; }
+  folders.push(name);
+  input.value = '';
+  saveLocal();
+  renderFolders();
+  renderSettings();
+  toast('Folder added');
+}
+
+function deleteFolder(name) {
+  if (name === 'All') return;
+  folders = folders.filter(f => f !== name);
+  podcasts.forEach(p => { if (p.folder === name) p.folder = 'All'; });
+  if (currentFolder === name) currentFolder = 'All';
+  saveLocal();
+  renderFolders();
+  renderSettings();
+  renderLibrary();
+}
+
+function populateFolderSelect(id) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = folders.filter(f => f !== 'All').map(f => '<option value="' + esc(f) + '">' + esc(f) + '</option>').join('');
+  sel.innerHTML = '<option value="">None</option>' + sel.innerHTML;
+}
+
+function renderSettings() {
+  const list = document.getElementById('folderList');
+  list.innerHTML = folders.filter(f => f !== 'All').map(f =>
+    `<div class="settings-row">
+      <span class="sr-label">${esc(f)}</span>
+      <button onclick="deleteFolder('${esc(f)}')" style="color:var(--red);font-size:12px;font-weight:600">Delete</button>
+    </div>`
+  ).join('') || '<p style="color:var(--text2);font-size:13px">No custom folders yet.</p>';
+}
+
+/* ===== PODCAST DETAIL ===== */
+function openPodcast(id) {
+  currentPodcastId = id;
+  currentFilter = 'all';
+  showView('podcast');
+  renderPodcastDetail();
+  // refresh episodes
+  fetchEpisodes(id);
+}
+
+function renderPodcastDetail() {
+  const pod = podcasts.find(p => p.id === currentPodcastId);
+  if (!pod) return;
+  const eps = getFilteredEpisodes();
+  const el = document.getElementById('podDetail');
+
+  const hasRss = !!pod.rssUrl;
+  const hasYt = !!pod.youtubeUrl || !!pod.youtubeChannelId;
+  const hasSpotify = !!pod.spotifyUrl;
+
+  el.innerHTML = `
+    <div class="pod-header">
+      ${pod.artwork ? '<img src="'+pod.artwork+'" alt="">' : '<div style="width:100px;height:100px;background:var(--bg3);border-radius:var(--radius)"></div>'}
+      <div class="pod-meta">
+        <div class="pod-title">${esc(pod.title)}</div>
+        <div class="pod-author">${esc(pod.author)}</div>
+        <div class="pod-platforms">
+          <div class="plat-icon${hasRss ? ' active' : ''}" title="RSS"><svg>${SVG_RSS}</svg></div>
+          <div class="plat-icon${hasYt ? ' active' : ''}" title="YouTube"><svg>${SVG_YT}</svg></div>
+          <div class="plat-icon${hasSpotify ? ' active' : ''}" title="Spotify"><svg>${SVG_SPOTIFY}</svg></div>
+        </div>
+        <div class="pod-actions">
+          <button onclick="editPodcast('${pod.id}')">Edit</button>
+          <button onclick="refreshPodcast('${pod.id}')">Refresh</button>
+          <button onclick="unsubscribe('${pod.id}')" style="color:var(--red)">Unsubscribe</button>
+        </div>
+      </div>
+    </div>
+    <div class="ep-filters">
+      <button class="ep-filter${currentFilter==='all'?' active':''}" onclick="setFilter('all')">All (${(episodeCache[pod.id]||[]).length})</button>
+      <button class="ep-filter${currentFilter==='unplayed'?' active':''}" onclick="setFilter('unplayed')">Unplayed (${(episodeCache[pod.id]||[]).filter(e=>!e.played).length})</button>
+      <button class="ep-filter${currentFilter==='played'?' active':''}" onclick="setFilter('played')">Played (${(episodeCache[pod.id]||[]).filter(e=>e.played).length})</button>
+      <button class="ep-filter${currentFilter==='pinned'?' active':''}" onclick="setFilter('pinned')">Pinned (${(episodeCache[pod.id]||[]).filter(e=>e.pinned).length})</button>
+    </div>
+    <div class="ep-list" id="epList">
+      ${eps.length ? eps.map(ep => renderEpisode(ep, pod)).join('') : '<p style="color:var(--text2);text-align:center;padding:30px 0">No episodes found.</p>'}
+    </div>
+  `;
+}
+
+function renderEpisode(ep, pod) {
+  const hasAudio = !!ep.audioUrl;
+  const hasYt = !!ep.youtubeUrl || !!pod.youtubeUrl;
+  const hasSpotify = !!ep.spotifyUrl || !!pod.spotifyUrl;
+  const isPlaying = playerState.episodeGuid === ep.guid;
+  // YouTube: use direct link if matched, otherwise search by episode title
+  const ytLink = ep.youtubeUrl || 'https://www.youtube.com/results?search_query=' + encodeURIComponent(pod.title + ' ' + ep.title);
+  const spLink = ep.spotifyUrl || pod.spotifyUrl || '';
+  return `<div class="ep-item${ep.played ? ' played' : ''}">
+    <div style="position:relative;flex-shrink:0">
+      ${pod.artwork ? '<img class="ep-art" src="'+pod.artwork+'" alt="">' : '<div class="ep-art" style="background:var(--bg3)"></div>'}
+      ${isPlaying ? '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);border-radius:var(--radius-sm)"><div style="width:8px;height:8px;background:var(--accent);border-radius:50%;animation:spin .8s linear infinite"></div></div>' : ''}
+    </div>
+    <div class="ep-info">
+      <div class="ep-title">${esc(ep.title)}</div>
+      <div class="ep-date">${formatDate(ep.date)}${ep.duration ? ' &bull; ' + ep.duration : ''}</div>
+      <div class="ep-sources">
+        ${hasAudio ? '<button class="ep-src" onclick="playEpisode(\''+currentPodcastId+'\',\''+ep.guid.replace(/'/g,"\\'")+'\')" title="Play audio"><svg>'+SVG_PLAY+'</svg></button>' : ''}
+        ${hasYt ? '<button class="ep-src" onclick="openYouTube(\''+ytLink+'\')" title="Watch on YouTube" style="color:var(--red)"><svg>'+SVG_YT+'</svg></button>' : ''}
+        ${hasSpotify ? '<button class="ep-src" onclick="window.open(\''+spLink+'\',\'_blank\')" title="Open in Spotify" style="color:var(--green)"><svg>'+SVG_SPOTIFY+'</svg></button>' : ''}
+      </div>
+    </div>
+    <button class="ep-check${ep.played ? ' checked' : ''}" onclick="togglePlayed('${currentPodcastId}','${ep.guid}')">
+      <svg>${SVG_CHECK}</svg>
+    </button>
+  </div>`;
+}
+
+function getFilteredEpisodes() {
+  let eps = episodeCache[currentPodcastId] || [];
+  if (currentFilter === 'unplayed') eps = eps.filter(e => !e.played);
+  if (currentFilter === 'played') eps = eps.filter(e => e.played);
+  if (currentFilter === 'pinned') eps = eps.filter(e => e.pinned);
+  return eps;
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  renderPodcastDetail();
+}
+
+function togglePlayed(podId, guid) {
+  const eps = episodeCache[podId] || [];
+  const ep = eps.find(e => e.guid === guid);
+  if (ep) {
+    ep.played = !ep.played;
+    saveLocal();
+    renderPodcastDetail();
+  }
+}
+
+function togglePinned(podId, guid) {
+  const eps = episodeCache[podId] || [];
+  const ep = eps.find(e => e.guid === guid);
+  if (ep) {
+    ep.pinned = !ep.pinned;
+    saveLocal();
+    renderPodcastDetail();
+  }
+}
+
+/* ===== FETCH EPISODES (RSS) ===== */
+async function fetchEpisodes(podId) {
+  const pod = podcasts.find(p => p.id === podId);
+  if (!pod || !pod.rssUrl) return;
+
+  try {
+    let xml;
+    // try direct fetch first
+    try {
+      const resp = await fetch(pod.rssUrl);
+      const text = await resp.text();
+      xml = new DOMParser().parseFromString(text, 'text/xml');
+    } catch (e) {
+      // CORS blocked — try proxy via Apps Script
+      if (syncUrl) {
+        xml = await fetchRSSProxy(pod.rssUrl);
+      } else {
+        throw e;
+      }
+    }
+
+    if (!xml) return;
+    const items = xml.querySelectorAll('item');
+    const existing = episodeCache[podId] || [];
+
+    const newEps = Array.from(items).map(item => {
+      const guid = (item.querySelector('guid')?.textContent || item.querySelector('title')?.textContent || '').trim();
+      const title = (item.querySelector('title')?.textContent || '').trim();
+      const enclosure = item.querySelector('enclosure');
+      const audioUrl = enclosure ? enclosure.getAttribute('url') : '';
+      const date = item.querySelector('pubDate')?.textContent || '';
+      // itunes:duration
+      const durEl = item.getElementsByTagName('itunes:duration')[0];
+      const duration = durEl ? durEl.textContent.trim() : '';
+
+      // preserve existing played/pinned/progress state
+      const old = existing.find(e => e.guid === guid);
+      return {
+        guid,
+        title,
+        audioUrl,
+        date,
+        duration: formatDuration(duration),
+        youtubeUrl: old?.youtubeUrl || '',
+        spotifyUrl: old?.spotifyUrl || '',
+        played: old?.played || false,
+        pinned: old?.pinned || false,
+        progress: old?.progress || 0
+      };
+    });
+
+    // merge YouTube videos if channel is linked (via Apps Script YouTube Data API)
+    if (pod.youtubeUrl) {
+      await mergeYouTubeEpisodes(podId, pod.youtubeUrl, newEps);
+    }
+
+    // merge Spotify episodes if show is linked (via Apps Script Spotify API)
+    if (pod.spotifyUrl && syncUrl) {
+      await mergeSpotifyEpisodes(podId, pod.spotifyUrl, newEps);
+    }
+
+    episodeCache[podId] = newEps;
+    saveLocal();
+    if (currentPodcastId === podId && currentView === 'podcast') renderPodcastDetail();
+
+    // update artwork from feed if not set
+    if (!pod.artwork) {
+      const img = xml.querySelector('channel image url')?.textContent ||
+                  xml.querySelector('channel')?.getElementsByTagName('itunes:image')[0]?.getAttribute('href');
+      if (img) {
+        pod.artwork = img;
+        saveLocal();
+        renderLibrary();
+      }
+    }
+  } catch (e) {
+    console.error('Failed to fetch episodes for', pod.title, e);
+  }
+}
+
+async function fetchRSSProxy(rssUrl) {
+  return new Promise((resolve, reject) => {
+    jsonpFetch(syncUrl + '?action=fetch_rss&url=' + encodeURIComponent(rssUrl), (err, text) => {
+      if (err) return reject(err);
+      try {
+        const xml = new DOMParser().parseFromString(text, 'text/xml');
+        resolve(xml);
+      } catch (e) { reject(e); }
+    });
+  });
+}
+
+/* ===== YOUTUBE MERGE (via Apps Script YouTube Data API) ===== */
+async function mergeYouTubeEpisodes(podId, channelUrl, episodes) {
+  if (!syncUrl || !channelUrl) return;
+  try {
+    const data = await new Promise((resolve, reject) => {
+      jsonpFetch(syncUrl + '?action=fetch_youtube&channel=' + encodeURIComponent(channelUrl), (err, resp) => {
+        if (err) return reject(err);
+        resolve(resp);
+      });
+    });
+    if (data.error) { console.error('YouTube API error:', data.error); return; }
+    const existing = episodeCache[podId] || [];
+    (data.videos || []).forEach(vid => {
+      // try to match to an existing RSS episode by title similarity
+      const match = episodes.find(ep => titleSimilar(ep.title, vid.title));
+      if (match) {
+        match.youtubeUrl = vid.url;
+      } else {
+        // add as YouTube-only episode (not in RSS)
+        const old = existing.find(e => e.guid === 'yt_' + vid.videoId);
+        episodes.push({
+          guid: 'yt_' + vid.videoId,
+          title: vid.title,
+          audioUrl: '',
+          date: vid.date,
+          duration: '',
+          youtubeUrl: vid.url,
+          spotifyUrl: '',
+          played: old?.played || false,
+          pinned: old?.pinned || false,
+          progress: 0
+        });
+      }
+    });
+    console.log('YouTube: merged ' + (data.count || 0) + ' videos');
+  } catch (e) {
+    console.error('YouTube merge failed:', e);
+  }
+}
+
+/* ===== SPOTIFY MERGE (via Apps Script Spotify API) ===== */
+async function mergeSpotifyEpisodes(podId, showUrl, episodes) {
+  if (!syncUrl || !showUrl) return;
+  try {
+    const data = await new Promise((resolve, reject) => {
+      jsonpFetch(syncUrl + '?action=fetch_spotify&show=' + encodeURIComponent(showUrl), (err, resp) => {
+        if (err) return reject(err);
+        resolve(resp);
+      });
+    });
+    if (data.error) { console.error('Spotify API error:', data.error); return; }
+    const existing = episodeCache[podId] || [];
+    (data.episodes || []).forEach(sp => {
+      // try to match to an existing RSS/YT episode by title
+      const match = episodes.find(ep => titleSimilar(ep.title, sp.title));
+      if (match) {
+        match.spotifyUrl = sp.url;
+      } else {
+        // Spotify-exclusive episode (not in RSS or YouTube)
+        const old = existing.find(e => e.guid === 'sp_' + sp.spotifyId);
+        episodes.push({
+          guid: 'sp_' + sp.spotifyId,
+          title: sp.title,
+          audioUrl: '',
+          date: sp.date,
+          duration: sp.duration ? formatDuration('' + sp.duration) : '',
+          youtubeUrl: '',
+          spotifyUrl: sp.url,
+          played: old?.played || false,
+          pinned: old?.pinned || false,
+          progress: 0
+        });
+      }
+    });
+    console.log('Spotify: merged ' + (data.count || 0) + ' episodes');
+  } catch (e) {
+    console.error('Spotify merge failed:', e);
+  }
+}
+
+function titleSimilar(a, b) {
+  const na = (a||'').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const nb = (b||'').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!na || !nb) return false;
+  return na.includes(nb) || nb.includes(na) || na === nb;
+}
+
+/* ===== AUDIO PLAYER ===== */
+function playEpisode(podId, guid) {
+  const pod = podcasts.find(p => p.id === podId);
+  const eps = episodeCache[podId] || [];
+  const ep = eps.find(e => e.guid === guid);
+  if (!ep || !ep.audioUrl) { toast('No audio available'); return; }
+
+  audio.src = ep.audioUrl;
+  audio.playbackRate = playerState.playbackRate || 1;
+
+  // restore position if same episode
+  if (playerState.episodeGuid === guid && playerState.currentTime > 0) {
+    audio.currentTime = playerState.currentTime;
+  } else if (ep.progress > 0) {
+    audio.currentTime = ep.progress;
+  }
+
+  audio.play().catch(e => console.error('Play failed:', e));
+
+  playerState.podcastId = podId;
+  playerState.episodeGuid = guid;
+  saveLocal();
+
+  // update player bar
+  const bar = document.getElementById('playerBar');
+  bar.classList.add('visible');
+  document.getElementById('pbArt').src = pod.artwork || '';
+  document.getElementById('pbTitle').textContent = ep.title;
+  document.getElementById('pbPodcast').textContent = pod.title;
+  document.getElementById('fpArt').src = pod.artwork || '';
+  document.getElementById('fpTitle').textContent = ep.title;
+  document.getElementById('fpPodcast').textContent = pod.title;
+  updatePlayIcons(true);
+
+  if (currentView === 'podcast') renderPodcastDetail();
+}
+
+function togglePlay() {
+  if (audio.paused) { audio.play(); updatePlayIcons(true); }
+  else { audio.pause(); updatePlayIcons(false); }
+}
+
+function updatePlayIcons(playing) {
+  const icon = playing ? SVG_PAUSE : SVG_PLAY;
+  document.getElementById('pbPlayIcon').innerHTML = icon;
+  document.getElementById('fpPlayIcon').innerHTML = icon;
+}
+
+function seekAudio(sec) {
+  audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + sec));
+}
+
+function seekTo(val) {
+  if (audio.duration) audio.currentTime = (val / 100) * audio.duration;
+}
+
+function cycleSpeed() {
+  const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  const cur = audio.playbackRate;
+  const idx = speeds.indexOf(cur);
+  const next = speeds[(idx + 1) % speeds.length];
+  audio.playbackRate = next;
+  playerState.playbackRate = next;
+  document.getElementById('fpSpeed').textContent = next + 'x';
+  saveLocal();
+}
+
+// audio events
+audio.addEventListener('timeupdate', () => {
+  playerState.currentTime = audio.currentTime;
+  // update seek bar
+  if (audio.duration) {
+    document.getElementById('fpSeek').value = (audio.currentTime / audio.duration) * 100;
+    document.getElementById('fpCur').textContent = fmtTime(audio.currentTime);
+    document.getElementById('fpDur').textContent = fmtTime(audio.duration);
+  }
+  // save progress to episode
+  if (playerState.episodeGuid && playerState.podcastId) {
+    const eps = episodeCache[playerState.podcastId] || [];
+    const ep = eps.find(e => e.guid === playerState.episodeGuid);
+    if (ep) ep.progress = audio.currentTime;
+  }
+});
+
+audio.addEventListener('ended', () => {
+  updatePlayIcons(false);
+  // mark as played
+  if (playerState.episodeGuid && playerState.podcastId) {
+    const eps = episodeCache[playerState.podcastId] || [];
+    const ep = eps.find(e => e.guid === playerState.episodeGuid);
+    if (ep) { ep.played = true; ep.progress = 0; }
+    saveLocal();
+    if (currentView === 'podcast') renderPodcastDetail();
+  }
+});
+
+audio.addEventListener('pause', () => saveLocal());
+audio.addEventListener('play', () => updatePlayIcons(true));
+
+// save progress periodically
+setInterval(() => {
+  if (!audio.paused) {
+    localStorage.setItem(LS_PLAYER, JSON.stringify(playerState));
+  }
+}, 5000);
+
+/* ===== FULL PLAYER ===== */
+function openFullPlayer() { document.getElementById('fullPlayer').classList.add('active'); }
+function closeFullPlayer() { document.getElementById('fullPlayer').classList.remove('active'); }
+
+/* ===== SLEEP TIMER ===== */
+function toggleSleepTimer() {
+  if (sleepTimerId) {
+    clearTimeout(sleepTimerId);
+    sleepTimerId = null;
+    toast('Sleep timer off');
+    return;
+  }
+  const mins = prompt('Sleep timer (minutes):', '30');
+  if (!mins || isNaN(mins)) return;
+  sleepTimerId = setTimeout(() => { audio.pause(); sleepTimerId = null; toast('Sleep timer — paused'); }, parseInt(mins) * 60000);
+  toast('Sleep timer: ' + mins + ' min');
+}
+
+/* ===== PODCAST MANAGEMENT ===== */
+function refreshPodcast(id) {
+  toast('Refreshing...');
+  fetchEpisodes(id);
+}
+
+function editPodcast(id) {
+  const pod = podcasts.find(p => p.id === id);
+  if (!pod) return;
+  // reuse subscribe modal for editing
+  pendingSub = { _editId: id };
+  document.getElementById('subModalTitle').textContent = 'Edit ' + pod.title;
+  document.getElementById('subModalArt').innerHTML = pod.artwork ? '<img src="'+pod.artwork+'" style="width:120px;height:120px;border-radius:12px">' : '';
+  populateFolderSelect('subFolder');
+  document.getElementById('subFolder').value = pod.folder || '';
+  document.getElementById('subYoutube').value = pod.youtubeUrl || '';
+  document.getElementById('subSpotify').value = pod.spotifyUrl || '';
+  document.getElementById('subModal').classList.add('active');
+  // override confirm
+  document.querySelector('#subModal .btn-save').onclick = function() {
+    pod.folder = document.getElementById('subFolder').value || 'All';
+    pod.youtubeChannelId = extractYTChannelId(document.getElementById('subYoutube').value);
+    pod.youtubeUrl = document.getElementById('subYoutube').value.trim();
+    pod.spotifyUrl = document.getElementById('subSpotify').value.trim();
+    saveLocal();
+    closeSubModal();
+    toast('Updated');
+    renderPodcastDetail();
+    // re-fetch with YouTube if newly added
+    if (pod.youtubeChannelId) fetchEpisodes(pod.id);
+    // restore default onclick
+    document.querySelector('#subModal .btn-save').onclick = confirmSubscribe;
+  };
+}
+
+function unsubscribe(id) {
+  if (!confirm('Unsubscribe from this podcast?')) return;
+  podcasts = podcasts.filter(p => p.id !== id);
+  delete episodeCache[id];
+  localStorage.removeItem(LS_EPISODES + id);
+  saveLocal();
+  toast('Unsubscribed');
+  showView('library');
+}
+
+/* ===== RESTORE PLAYER STATE ===== */
+function restorePlayer() {
+  if (playerState.podcastId && playerState.episodeGuid) {
+    const pod = podcasts.find(p => p.id === playerState.podcastId);
+    const eps = episodeCache[playerState.podcastId] || [];
+    const ep = eps.find(e => e.guid === playerState.episodeGuid);
+    if (pod && ep) {
+      document.getElementById('pbArt').src = pod.artwork || '';
+      document.getElementById('pbTitle').textContent = ep.title;
+      document.getElementById('pbPodcast').textContent = pod.title;
+      document.getElementById('fpArt').src = pod.artwork || '';
+      document.getElementById('fpTitle').textContent = ep.title;
+      document.getElementById('fpPodcast').textContent = pod.title;
+      document.getElementById('fpSpeed').textContent = (playerState.playbackRate || 1) + 'x';
+      // show bar but don't auto-play
+      document.getElementById('playerBar').classList.add('visible');
+    }
+  }
+}
+
+/* ===== HELPERS ===== */
+function extractYTChannelId(url) {
+  if (!url) return '';
+  url = url.trim();
+  // direct channel ID
+  const m1 = url.match(/channel\/(UC[a-zA-Z0-9_-]+)/);
+  if (m1) return m1[1];
+  // @ handle — can't resolve to ID client-side, store URL for now
+  return '';
+}
+
+function openYouTube(url) {
+  if (!url) return;
+  if (ytApp === 'default') {
+    window.open(url, '_blank');
+    return;
+  }
+  // build Android intent URI to open in specific app
+  const pkg = ytApp === 'custom' ? ytCustomPkg : (YT_PACKAGES[ytApp] || '');
+  if (pkg) {
+    const intentUrl = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;package=' + pkg + ';scheme=https;end';
+    window.location.href = intentUrl;
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
+function saveYtApp() {
+  ytApp = document.getElementById('ytAppSelect').value;
+  ytCustomPkg = document.getElementById('ytCustomPkg')?.value?.trim() || '';
+  localStorage.setItem(LS_YT_APP, ytApp);
+  localStorage.setItem(LS_YT_PKG, ytCustomPkg);
+  document.getElementById('ytCustomRow').style.display = ytApp === 'custom' ? 'block' : 'none';
+  toast('YouTube app saved');
+}
+
+function loadYtApp() {
+  ytApp = localStorage.getItem(LS_YT_APP) || 'default';
+  ytCustomPkg = localStorage.getItem(LS_YT_PKG) || '';
+  const sel = document.getElementById('ytAppSelect');
+  if (sel) sel.value = ytApp;
+  const customRow = document.getElementById('ytCustomRow');
+  if (customRow) customRow.style.display = ytApp === 'custom' ? 'block' : 'none';
+  const customInput = document.getElementById('ytCustomPkg');
+  if (customInput) customInput.value = ytCustomPkg;
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function decEsc(s) { const el = document.createElement('div'); el.innerHTML = s; return el.textContent; }
+
+function formatDate(d) {
+  if (!d) return '';
+  try {
+    const date = new Date(d);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch (e) { return d; }
+}
+
+function formatDuration(d) {
+  if (!d) return '';
+  // already formatted like "1:23:45"
+  if (d.includes(':')) return d;
+  // seconds
+  const sec = parseInt(d);
+  if (isNaN(sec)) return d;
+  return fmtTime(sec);
+}
+
+function fmtTime(sec) {
+  sec = Math.floor(sec);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+/* ===== SERVICE WORKER ===== */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js');
+}
+
+/* ===== START ===== */
+init();
+</script>
+</body>
+</html>
