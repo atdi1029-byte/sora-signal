@@ -135,22 +135,43 @@ function fetchYouTubeVideos_(channelInput) {
     if (pageToken) opts.pageToken = pageToken;
     const resp = YouTube.PlaylistItems.list('snippet', opts);
 
-    (resp.items || []).forEach(item => {
-      const s = item.snippet;
-      videos.push({
-        videoId: s.resourceId.videoId,
-        title: s.title,
-        date: s.publishedAt,
-        thumbnail: (s.thumbnails && s.thumbnails.medium) ? s.thumbnails.medium.url : '',
-        url: 'https://www.youtube.com/watch?v=' + s.resourceId.videoId
+    // collect video IDs for this page
+    const pageVideoIds = (resp.items || []).map(item => item.snippet.resourceId.videoId);
+    const pageSnippets = {};
+    (resp.items || []).forEach(item => { pageSnippets[item.snippet.resourceId.videoId] = item.snippet; });
+
+    // fetch durations for this batch
+    if (pageVideoIds.length) {
+      const detailResp = YouTube.Videos.list('contentDetails', { id: pageVideoIds.join(','), maxResults: 50 });
+      (detailResp.items || []).forEach(v => {
+        const duration = parseDuration_(v.contentDetails.duration); // seconds
+        if (duration < 91) return; // skip shorts (under 1:31)
+        const s = pageSnippets[v.id];
+        if (!s) return;
+        videos.push({
+          videoId: v.id,
+          title: s.title,
+          date: s.publishedAt,
+          duration: duration,
+          thumbnail: (s.thumbnails && s.thumbnails.medium) ? s.thumbnails.medium.url : '',
+          url: 'https://www.youtube.com/watch?v=' + v.id
+        });
       });
-    });
+    }
 
     pageToken = resp.nextPageToken || '';
     maxPages--;
   } while (pageToken && maxPages > 0);
 
   return { videos: videos, count: videos.length, channelId: channelId };
+}
+
+// Parse ISO 8601 duration (PT1H2M3S) to seconds
+function parseDuration_(iso) {
+  if (!iso) return 0;
+  const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!m) return 0;
+  return (parseInt(m[1] || 0) * 3600) + (parseInt(m[2] || 0) * 60) + parseInt(m[3] || 0);
 }
 
 function resolveYouTubeChannel_(input) {

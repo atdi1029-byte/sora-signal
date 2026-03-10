@@ -242,7 +242,13 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .fp-controls{display:flex;align-items:center;gap:24px;margin-top:24px}
 .fp-controls button{display:flex;align-items:center;justify-content:center}
 .fp-controls button svg{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.fp-ctrl-skip svg{width:24px;height:24px}
+.fp-ctrl-skip{
+  width:48px;height:48px;border-radius:50%;
+  background:var(--bg3);border:1px solid var(--border);
+  flex-direction:column;gap:0;position:relative;
+}
+.fp-ctrl-skip svg{width:18px;height:18px}
+.fp-ctrl-skip .skip-label{font-size:10px;font-weight:700;color:var(--text);line-height:1;margin-top:-2px}
 .fp-ctrl-play{
   width:64px;height:64px;border-radius:50%;
   background:var(--accent3);color:#fff;
@@ -268,7 +274,8 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .modal{
   width:100%;max-width:500px;background:var(--bg2);
   border-radius:var(--radius-lg) var(--radius-lg) 0 0;
-  padding:24px 16px 32px;max-height:80vh;overflow-y:auto;
+  padding:24px 16px calc(32px + env(safe-area-inset-bottom,0px));max-height:85vh;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
 }
 .modal h3{font-size:16px;font-weight:700;margin-bottom:16px}
 .modal label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;margin-top:12px}
@@ -300,17 +307,18 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 /* ===== BOTTOM NAV ===== */
 .bottom-nav{
   display:flex;align-items:center;justify-content:space-around;
-  padding:8px 0 env(safe-area-inset-bottom,8px);
-  background:rgba(10,6,18,0.95);border-top:1px solid var(--border);
+  padding:10px 0 env(safe-area-inset-bottom,10px);
+  background:#0a0612;border-top:2px solid var(--accent3);
   position:relative;z-index:80;
+  box-shadow:0 -4px 20px rgba(255,45,149,0.2);
 }
 .nav-btn{
-  display:flex;flex-direction:column;align-items:center;gap:2px;
-  padding:4px 16px;color:var(--text2);transition:all .2s;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 20px;color:var(--text);transition:all .2s;
 }
 .nav-btn.active{color:var(--accent);filter:drop-shadow(0 0 6px rgba(0,212,255,0.4))}
-.nav-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.nav-btn span{font-size:10px;font-weight:600}
+.nav-btn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nav-btn span{font-size:11px;font-weight:700}
 
 /* ===== EMPTY STATE ===== */
 .empty-state{
@@ -495,9 +503,9 @@ body::after{
     <div class="fp-times"><span id="fpCur">0:00</span><span id="fpDur">0:00</span></div>
   </div>
   <div class="fp-controls">
-    <button class="fp-ctrl-skip" onclick="seekAudio(-15)"><svg><polygon points="11 19 2 12 11 5"/></svg></button>
+    <button class="fp-ctrl-skip" onclick="seekAudio(-15)"><svg><polygon points="11 19 2 12 11 5"/></svg><span class="skip-label">15</span></button>
     <button class="fp-ctrl-play" id="fpPlayBtn" onclick="togglePlay()"><svg id="fpPlayIcon"><polygon points="5 3 19 12 5 21" fill="currentColor" stroke="none"/></svg></button>
-    <button class="fp-ctrl-skip" onclick="seekAudio(30)"><svg><polygon points="13 19 22 12 13 5"/></svg></button>
+    <button class="fp-ctrl-skip" onclick="seekAudio(30)"><svg><polygon points="13 19 22 12 13 5"/></svg><span class="skip-label">30</span></button>
   </div>
   <button class="fp-speed" id="fpSpeed" onclick="cycleSpeed()">1x</button>
   <div class="fp-extras">
@@ -1028,9 +1036,8 @@ function renderEpisode(ep, pod) {
   const hasYt = !!ep.youtubeUrl || !!pod.youtubeUrl;
   const hasSpotify = !!ep.spotifyUrl || !!pod.spotifyUrl;
   const isPlaying = playerState.episodeGuid === ep.guid;
-  // YouTube: use direct link if matched, otherwise search by episode title
-  const ytLink = ep.youtubeUrl || 'https://www.youtube.com/results?search_query=' + encodeURIComponent(pod.title + ' ' + ep.title);
-  const spLink = ep.spotifyUrl || pod.spotifyUrl || '';
+  // store links in data attributes to avoid quote-breaking in onclick
+  const epIdx = (episodeCache[currentPodcastId] || []).indexOf(ep);
   return `<div class="ep-item${ep.played ? ' played' : ''}">
     <div style="position:relative;flex-shrink:0">
       ${pod.artwork ? '<img class="ep-art" src="'+pod.artwork+'" alt="">' : '<div class="ep-art" style="background:var(--bg3)"></div>'}
@@ -1040,12 +1047,12 @@ function renderEpisode(ep, pod) {
       <div class="ep-title">${esc(ep.title)}</div>
       <div class="ep-date">${formatDate(ep.date)}${ep.duration ? ' &bull; ' + ep.duration : ''}</div>
       <div class="ep-sources">
-        ${hasAudio ? '<button class="ep-src" onclick="playEpisode(\''+currentPodcastId+'\',\''+ep.guid.replace(/'/g,"\\'")+'\')" title="Play audio"><svg>'+SVG_PLAY+'</svg></button>' : ''}
-        ${hasYt ? '<button class="ep-src" onclick="openYouTube(\''+ytLink+'\')" title="Watch on YouTube" style="color:var(--red)"><svg>'+SVG_YT+'</svg></button>' : ''}
-        ${hasSpotify ? '<button class="ep-src" onclick="window.open(\''+spLink+'\',\'_blank\')" title="Open in Spotify" style="color:var(--green)"><svg>'+SVG_SPOTIFY+'</svg></button>' : ''}
+        ${hasAudio ? '<button class="ep-src" onclick="playEpByIdx('+epIdx+')" title="Play audio"><svg>'+SVG_PLAY+'</svg></button>' : ''}
+        ${hasYt ? '<button class="ep-src" onclick="openYtByIdx('+epIdx+')" title="Watch on YouTube" style="color:var(--red)"><svg>'+SVG_YT+'</svg></button>' : ''}
+        ${hasSpotify ? '<button class="ep-src" onclick="openSpByIdx('+epIdx+')" title="Open in Spotify" style="color:var(--green)"><svg>'+SVG_SPOTIFY+'</svg></button>' : ''}
       </div>
     </div>
-    <button class="ep-check${ep.played ? ' checked' : ''}" onclick="togglePlayed('${currentPodcastId}','${ep.guid}')">
+    <button class="ep-check${ep.played ? ' checked' : ''}" onclick="togglePlayedByIdx(${epIdx})">
       <svg>${SVG_CHECK}</svg>
     </button>
   </div>`;
@@ -1062,6 +1069,32 @@ function getFilteredEpisodes() {
 function setFilter(f) {
   currentFilter = f;
   renderPodcastDetail();
+}
+
+/* ===== INDEX-BASED EPISODE HELPERS (avoids quote-breaking in onclick) ===== */
+function getEpByIdx(idx) {
+  const eps = episodeCache[currentPodcastId] || [];
+  return eps[idx] || null;
+}
+function playEpByIdx(idx) {
+  const ep = getEpByIdx(idx);
+  if (ep) playEpisode(currentPodcastId, ep.guid);
+}
+function openYtByIdx(idx) {
+  const ep = getEpByIdx(idx);
+  const pod = podcasts.find(p => p.id === currentPodcastId);
+  const url = ep?.youtubeUrl || pod?.youtubeUrl || '';
+  if (url) openYouTube(url);
+}
+function openSpByIdx(idx) {
+  const ep = getEpByIdx(idx);
+  const pod = podcasts.find(p => p.id === currentPodcastId);
+  const url = ep?.spotifyUrl || pod?.spotifyUrl || '';
+  if (url) window.open(url, '_blank');
+}
+function togglePlayedByIdx(idx) {
+  const ep = getEpByIdx(idx);
+  if (ep) togglePlayed(currentPodcastId, ep.guid);
 }
 
 function togglePlayed(podId, guid) {
@@ -1267,10 +1300,22 @@ async function mergeSpotifyEpisodes(podId, showUrl, episodes) {
 }
 
 function titleSimilar(a, b) {
-  const na = (a||'').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const nb = (b||'').toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (!na || !nb) return false;
-  return na.includes(nb) || nb.includes(na) || na === nb;
+  if (!a || !b) return false;
+  const la = a.toLowerCase(), lb = b.toLowerCase();
+  // exact match after stripping non-alphanumeric
+  const na = la.replace(/[^a-z0-9]/g, '');
+  const nb = lb.replace(/[^a-z0-9]/g, '');
+  if (na === nb) return true;
+  if (na.includes(nb) || nb.includes(na)) return true;
+  // word-based overlap: if 70%+ of words from shorter title appear in longer
+  const wa = la.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 1);
+  const wb = lb.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 1);
+  if (!wa.length || !wb.length) return false;
+  const shorter = wa.length <= wb.length ? wa : wb;
+  const longer = wa.length <= wb.length ? wb : wa;
+  const longerStr = longer.join(' ');
+  const matches = shorter.filter(w => longerStr.includes(w)).length;
+  return matches / shorter.length >= 0.7;
 }
 
 /* ===== AUDIO PLAYER ===== */
