@@ -1194,7 +1194,11 @@ async function mergeYouTubeEpisodes(podId, channelUrl, episodes) {
     });
     if (data.error) { console.error('YouTube API error:', data.error); return; }
     const existing = episodeCache[podId] || [];
-    (data.videos || []).forEach(vid => {
+    (data.videos || []).filter(vid => {
+      // skip YouTube Shorts
+      const t = (vid.title || '').toLowerCase();
+      return !t.includes('#shorts') && !t.includes('#short') && t !== 'shorts';
+    }).forEach(vid => {
       // try to match to an existing RSS episode by title similarity
       const match = episodes.find(ep => titleSimilar(ep.title, vid.title));
       if (match) {
