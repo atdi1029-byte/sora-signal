@@ -1315,15 +1315,16 @@ function titleSimilar(a, b) {
   const nb = lb.replace(/[^a-z0-9]/g, '');
   if (na === nb) return true;
   if (na.includes(nb) || nb.includes(na)) return true;
-  // word-based overlap: if 70%+ of words from shorter title appear in longer
-  const wa = la.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 1);
-  const wb = lb.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 1);
-  if (!wa.length || !wb.length) return false;
+  // word-based overlap: skip common stopwords, require 85%+ match
+  const stop = new Set(['de','da','do','das','dos','e','a','o','as','os','um','uma','ft','com','em','no','na','por','para','que','se','the','and','of','in','to','is','it','for','on','with']);
+  const wa = la.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stop.has(w));
+  const wb = lb.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stop.has(w));
+  if (wa.length < 2 || wb.length < 2) return false;
   const shorter = wa.length <= wb.length ? wa : wb;
   const longer = wa.length <= wb.length ? wb : wa;
   const longerStr = longer.join(' ');
   const matches = shorter.filter(w => longerStr.includes(w)).length;
-  return matches / shorter.length >= 0.7;
+  return matches / shorter.length >= 0.85;
 }
 
 /* ===== AUDIO PLAYER ===== */
