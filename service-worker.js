@@ -1,4 +1,4 @@
-const CACHE_NAME = 'podcasts-v5';
+const CACHE_NAME = 'podcasts-v6';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
