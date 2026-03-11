@@ -201,7 +201,20 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .ep-item .ep-check.checked{border-color:var(--green);background:rgba(57,255,20,0.15);color:var(--green);box-shadow:var(--neon-green)}
 .ep-item .ep-check svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 
-/* player bar removed */
+/* ===== NOW PLAYING BAR ===== */
+.player-bar{
+  display:flex;align-items:center;gap:10px;
+  flex-shrink:0;
+  background:#0a0612;border-top:2px solid var(--accent);
+  padding:10px 16px;
+  z-index:90;
+  box-shadow:0 -4px 20px rgba(0,229,200,0.2);
+  cursor:pointer;
+}
+.player-bar img{width:36px;height:36px;border-radius:var(--radius-sm);object-fit:cover}
+.player-bar .pb-info{flex:1;min-width:0}
+.player-bar .pb-title{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player-bar .pb-podcast{font-size:10px;color:var(--text2)}
 
 /* ===== FULL PLAYER ===== */
 .full-player{
@@ -467,7 +480,14 @@ body::after{
 
 </div>
 
-<!-- player bar removed -->
+<!-- ===== PLAYER BAR ===== -->
+<div class="player-bar" id="playerBar" onclick="if(playerState.episodeGuid)openFullPlayer()">
+  <img id="pbArt" src="" alt="" style="display:none">
+  <div class="pb-info">
+    <div class="pb-title" id="pbTitle">Nothing playing</div>
+    <div class="pb-podcast" id="pbPodcast">Tap an episode to start</div>
+  </div>
+</div>
 
 <!-- ===== FULL PLAYER ===== -->
 <div class="full-player" id="fullPlayer">
@@ -1329,7 +1349,12 @@ function playEpisode(podId, guid) {
   playerState.episodeGuid = guid;
   saveLocal();
 
-  // update full player info
+  // update player bar + full player
+  const pbArt = document.getElementById('pbArt');
+  pbArt.src = pod.artwork || '';
+  pbArt.style.display = pod.artwork ? 'block' : 'none';
+  document.getElementById('pbTitle').textContent = ep.title;
+  document.getElementById('pbPodcast').textContent = pod.title;
   document.getElementById('fpArt').src = pod.artwork || '';
   document.getElementById('fpTitle').textContent = ep.title;
   document.getElementById('fpPodcast').textContent = pod.title;
@@ -1482,6 +1507,11 @@ function restorePlayer() {
     const eps = episodeCache[playerState.podcastId] || [];
     const ep = eps.find(e => e.guid === playerState.episodeGuid);
     if (pod && ep) {
+      const pbArt2 = document.getElementById('pbArt');
+      pbArt2.src = pod.artwork || '';
+      pbArt2.style.display = pod.artwork ? 'block' : 'none';
+      document.getElementById('pbTitle').textContent = ep.title;
+      document.getElementById('pbPodcast').textContent = pod.title;
       document.getElementById('fpArt').src = pod.artwork || '';
       document.getElementById('fpTitle').textContent = ep.title;
       document.getElementById('fpPodcast').textContent = pod.title;
