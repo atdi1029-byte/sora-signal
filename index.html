@@ -220,18 +220,18 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 /* ===== FULL PLAYER ===== */
 .full-player{
   display:none;position:fixed;inset:0;z-index:200;
-  background:url('player-bg-wide.jpg?v=1') center/cover no-repeat;background-color:var(--bg);
+  background:var(--bg);
   flex-direction:column;align-items:center;
-  padding:40px 24px 24px;
+  padding:40px 24px 24px;overflow:hidden;
 }
 .full-player::before{
-  content:'';position:absolute;inset:0;
-  background:inherit;background-size:cover;background-position:center;
-  filter:blur(8px);transform:scale(1.05);z-index:-2;
+  content:'';position:absolute;inset:-10px;
+  background:url('player-bg-wide.jpg?v=1') center/cover no-repeat;
+  filter:blur(10px);z-index:-2;
 }
 .full-player::after{
   content:'';position:absolute;inset:0;
-  background:rgba(10,6,18,0.5);z-index:-1;
+  background:rgba(10,6,18,0.55);z-index:-1;
 }
 .full-player.active{display:flex}
 .fp-close{position:absolute;top:12px;left:16px;padding:8px}
@@ -253,14 +253,15 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .fp-controls button{display:flex;align-items:center;justify-content:center}
 .fp-controls button svg{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .fp-ctrl-skip{
-  width:58px;height:58px;border-radius:50%;
-  background:var(--bg3);border:1px solid var(--border);
-  flex-direction:column;gap:2px;
-}
-.fp-ctrl-skip svg{width:16px;height:16px}
-.fp-ctrl-skip .skip-label{font-size:13px;font-weight:700;color:var(--text);line-height:1}
-.fp-ctrl-play{
   width:64px;height:64px;border-radius:50%;
+  background:rgba(20,12,40,0.85);border:2px solid var(--border);
+  flex-direction:column;gap:1px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+}
+.fp-ctrl-skip svg{width:14px;height:14px}
+.fp-ctrl-skip .skip-label{font-size:12px;font-weight:700;color:var(--text);line-height:1}
+.fp-ctrl-play{
+  width:72px;height:72px;border-radius:50%;
   background:var(--accent3);color:#fff;
   box-shadow:var(--neon-pink);
 }
@@ -317,9 +318,9 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 /* ===== BOTTOM NAV ===== */
 .bottom-nav{
   display:flex;align-items:center;justify-content:space-around;
-  padding:12px 0 calc(14px + env(safe-area-inset-bottom,0px));
+  padding:12px 0 calc(16px + env(safe-area-inset-bottom,0px));
   background:#0a0612;border-top:2px solid var(--accent3);
-  position:fixed;bottom:0;left:0;right:0;z-index:80;
+  flex-shrink:0;z-index:80;
   box-shadow:0 -4px 20px rgba(255,45,149,0.2);
 }
 .nav-btn{
@@ -393,7 +394,7 @@ body::after{
 }
 @media(max-width:768px){
   html{background-size:cover;background-position:center center}
-  .full-player{background-image:url('player-bg.png?v=4')}
+  .full-player::before{background-image:url('player-bg.png?v=4')}
 }
 </style>
 </head>
@@ -642,6 +643,20 @@ function init() {
     if (!document.hidden && syncUrl) pullFromCloud();
   });
   loadYtApp();
+  // handle back button
+  history.replaceState({ view: 'library' }, '');
+  window.addEventListener('popstate', (e) => {
+    const fp = document.getElementById('fullPlayer');
+    if (fp.classList.contains('active')) {
+      closeFullPlayer();
+      return;
+    }
+    const podView = document.getElementById('viewPodcast');
+    if (podView.classList.contains('active')) {
+      showView('library');
+      return;
+    }
+  });
   syncReady = true;
 }
 
@@ -1001,6 +1016,7 @@ function openPodcast(id) {
   currentFilter = 'all';
   showView('podcast');
   renderPodcastDetail();
+  history.pushState({ view: 'podcast', id: id }, '');
   // refresh episodes
   fetchEpisodes(id);
 }
@@ -1440,8 +1456,13 @@ setInterval(() => {
 }, 5000);
 
 /* ===== FULL PLAYER ===== */
-function openFullPlayer() { document.getElementById('fullPlayer').classList.add('active'); }
-function closeFullPlayer() { document.getElementById('fullPlayer').classList.remove('active'); }
+function openFullPlayer() {
+  document.getElementById('fullPlayer').classList.add('active');
+  history.pushState({ view: 'fullplayer' }, '');
+}
+function closeFullPlayer() {
+  document.getElementById('fullPlayer').classList.remove('active');
+}
 
 /* ===== SLEEP TIMER ===== */
 function toggleSleepTimer() {
