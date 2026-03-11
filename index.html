@@ -1169,8 +1169,8 @@ async function fetchEpisodes(podId) {
         audioUrl,
         date,
         duration: formatDuration(duration),
-        youtubeUrl: old?.youtubeUrl || '',
-        spotifyUrl: old?.spotifyUrl || '',
+        youtubeUrl: '',
+        spotifyUrl: '',
         played: old?.played || false,
         pinned: old?.pinned || false,
         progress: old?.progress || 0
