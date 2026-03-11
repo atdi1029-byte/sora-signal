@@ -72,7 +72,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .header-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* ===== VIEWS ===== */
-.views{flex:1;overflow:hidden;position:relative}
+.views{flex:1;min-height:0;overflow:hidden;position:relative}
 .view{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;padding:16px 16px 70px;display:none;-webkit-overflow-scrolling:touch}
 .view.active{display:block}
 
@@ -1432,10 +1432,12 @@ setInterval(() => {
 /* ===== FULL PLAYER ===== */
 function openFullPlayer() {
   document.getElementById('fullPlayer').classList.add('active');
+  document.getElementById('playerBar').style.display = 'none';
   history.pushState({ view: 'fullplayer' }, '');
 }
 function closeFullPlayer() {
   document.getElementById('fullPlayer').classList.remove('active');
+  document.getElementById('playerBar').style.display = 'flex';
 }
 
 /* ===== SLEEP TIMER ===== */
