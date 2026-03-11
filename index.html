@@ -220,7 +220,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 /* ===== FULL PLAYER ===== */
 .full-player{
   display:none;position:fixed;inset:0;z-index:200;
-  background:url('player-bg.png?v=2') center/cover no-repeat fixed;background-color:var(--bg);
+  background:url('player-bg.png?v=2') center center/auto 100% no-repeat var(--bg);
   flex-direction:column;align-items:center;
   padding:40px 24px 24px;
 }
@@ -387,7 +387,7 @@ body::after{
   .podcast-grid{grid-template-columns:repeat(3,1fr)}
 }
 @media(max-width:768px){
-  html{background-size:200% auto;background-position:center center}
+  html{background-size:cover;background-position:center center}
 }
 </style>
 </head>
