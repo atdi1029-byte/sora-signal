@@ -226,7 +226,12 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 }
 .full-player::before{
   content:'';position:absolute;inset:0;
-  background:rgba(10,6,18,0.55);z-index:-1;
+  background:inherit;background-size:cover;background-position:center;
+  filter:blur(8px);transform:scale(1.05);z-index:-2;
+}
+.full-player::after{
+  content:'';position:absolute;inset:0;
+  background:rgba(10,6,18,0.5);z-index:-1;
 }
 .full-player.active{display:flex}
 .fp-close{position:absolute;top:12px;left:16px;padding:8px}
