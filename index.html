@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0612">
@@ -21,7 +21,7 @@
   --card-hover:#1e1238;
   --text:#e8dff5;
   --text2:#8070a0;
-  --accent:#00d4ff;
+  --accent:#00e5c8;
   --accent2:#b44dff;
   --accent3:#ff2d95;
   --green:#39ff14;
@@ -30,10 +30,10 @@
   --gold:#ffd700;
   --border:#2a1a4a;
   --glass:rgba(10,6,18,0.9);
-  --glow:0 0 12px rgba(0,212,255,0.25),0 0 40px rgba(0,212,255,0.1);
+  --glow:0 0 12px rgba(0,229,200,0.25),0 0 40px rgba(0,229,200,0.1);
   --glow-pink:0 0 12px rgba(255,45,149,0.3),0 0 40px rgba(255,45,149,0.1);
   --glow-purple:0 0 12px rgba(180,77,255,0.3),0 0 40px rgba(180,77,255,0.1);
-  --neon-cyan:0 0 4px #00d4ff,0 0 12px rgba(0,212,255,0.4),0 0 30px rgba(0,212,255,0.15);
+  --neon-cyan:0 0 4px #00e5c8,0 0 12px rgba(0,229,200,0.4),0 0 30px rgba(0,229,200,0.15);
   --neon-pink:0 0 4px #ff2d95,0 0 12px rgba(255,45,149,0.4),0 0 30px rgba(255,45,149,0.15);
   --neon-orange:0 0 4px #ff9f1c,0 0 12px rgba(255,159,28,0.4),0 0 30px rgba(255,159,28,0.15);
   --neon-green:0 0 4px #39ff14,0 0 12px rgba(57,255,20,0.4),0 0 30px rgba(57,255,20,0.15);
@@ -205,10 +205,11 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .player-bar{
   display:flex;align-items:center;gap:10px;
   position:fixed;bottom:0;left:0;right:0;
-  background:#0a0612;border-top:2px solid var(--accent3);
-  padding:10px 16px 10px;z-index:90;
-  box-shadow:0 -4px 20px rgba(255,45,149,0.2);
-  cursor:pointer;
+  background:#0a0612;border-top:2px solid var(--accent);
+  padding:14px 16px;padding-bottom:max(24px, env(safe-area-inset-bottom,24px));
+  z-index:90;
+  box-shadow:0 -4px 20px rgba(0,229,200,0.2);
+  cursor:pointer;min-height:64px;box-sizing:border-box;
 }
 .player-bar.playing{}
 .player-bar img{width:40px;height:40px;border-radius:var(--radius-sm);object-fit:cover}
