@@ -767,11 +767,13 @@ function doSync(showFeedback) {
       }
       if (!folders.includes('All')) folders.unshift('All');
 
-      // Merge played/pinned status from cloud
+      // Merge played/pinned status from cloud + persist for RSS refresh
       if (cloud.episodePlayed) {
         Object.keys(cloud.episodePlayed).forEach(id => {
           if (allDeleted.has(id)) return;
           const statuses = cloud.episodePlayed[id] || [];
+          // Persist cloud played data so RSS refresh can apply it
+          localStorage.setItem('pcc_cloud_played_' + id, JSON.stringify(statuses));
           const eps = episodeCache[id] || [];
           statuses.forEach(s => {
             const ep = eps.find(e => e.guid === s.guid);
@@ -842,10 +844,12 @@ function pullFromCloud(showToast) {
       podcasts = podcasts.filter(p => !delSet.has(p.id));
     }
     if (cloud.lastModified) _lastModified = cloud.lastModified;
-    // Merge played status
+    // Merge played status + persist for RSS refresh
     if (cloud.episodePlayed) {
       Object.keys(cloud.episodePlayed).forEach(id => {
         const statuses = cloud.episodePlayed[id] || [];
+        // Persist so RSS refresh picks up played status even after cache clear
+        localStorage.setItem('pcc_cloud_played_' + id, JSON.stringify(statuses));
         const eps = episodeCache[id] || [];
         statuses.forEach(s => {
           const ep = eps.find(e => e.guid === s.guid);
@@ -1295,6 +1299,12 @@ async function fetchEpisodes(podId) {
 
       // preserve existing played/pinned/progress state
       const old = existing.find(e => e.guid === guid);
+      // Also check cloud played data (survives cache clears)
+      let cloudStatus = null;
+      try {
+        const cp = JSON.parse(localStorage.getItem('pcc_cloud_played_' + podId) || '[]');
+        cloudStatus = cp.find(s => s.guid === guid);
+      } catch(e) {}
       return {
         guid,
         title,
@@ -1303,9 +1313,9 @@ async function fetchEpisodes(podId) {
         duration: formatDuration(duration),
         youtubeUrl: '',
         spotifyUrl: '',
-        played: old?.played || false,
-        pinned: old?.pinned || false,
-        progress: old?.progress || 0
+        played: old?.played || cloudStatus?.played || false,
+        pinned: old?.pinned || cloudStatus?.pinned || false,
+        progress: old?.progress || cloudStatus?.progress || 0
       };
     });
 
