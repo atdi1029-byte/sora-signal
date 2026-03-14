@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html><head><title>Clearing cache...</title></head>
+<body>
+<p>Clearing cache and service worker...</p>
+<script>
+(async () => {
+  if ('serviceWorker' in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const r of regs) await r.unregister();
+  }
+  const keys = await caches.keys();
+  for (const k of keys) await caches.delete(k);
+  window.location.replace('./');
+})();
+</script>
+</body>
+</html>

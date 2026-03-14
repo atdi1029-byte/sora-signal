@@ -5,6 +5,21 @@
 
 const SHEET_NAME = 'PodcastData';
 
+function doPost(e) {
+  var body = e.postData ? e.postData.contents : '';
+  var parsed = null;
+  try { parsed = JSON.parse(body); } catch(err) {}
+  if (parsed && parsed.action === 'save' && parsed.data) {
+    var sheet = getSheet_();
+    sheet.getRange('A1').setValue(parsed.data);
+    sheet.getRange('B1').setValue(Date.now());
+    return ContentService.createTextOutput(JSON.stringify({ok: true}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  return ContentService.createTextOutput(JSON.stringify({error: 'Unknown action'}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 function doGet(e) {
   const action = (e.parameter.action || '').toLowerCase();
   const callback = e.parameter.callback || '';

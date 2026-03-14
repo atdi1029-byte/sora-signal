@@ -573,7 +573,6 @@ let playerState = { podcastId:null, episodeGuid:null, currentTime:0, playbackRat
 let sleepTimerId = null;
 let syncUrl = '';
 let syncReady = false;
-let pushTimeout = null;
 let ytApp = 'default'; // default|revanced|newpipe|custom
 let ytCustomPkg = '';
 
@@ -618,10 +617,19 @@ function init() {
   if (syncUrl) {
     document.getElementById('syncUrlInput').value = syncUrl;
     document.getElementById('syncStatus').textContent = 'Connected';
-    pullFromCloud();
+    // Startup: pull from cloud with merge (delayed to let local load first)
+    setTimeout(() => {
+      var localEmpty = !podcasts || podcasts.length === 0;
+      if (localEmpty) {
+        pullFromCloud(false);
+      } else {
+        doSync(false);
+      }
+      syncReady = true;
+    }, 1500);
   }
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && syncUrl) pullFromCloud();
+    if (!document.hidden && syncUrl && syncReady) doSync(false);
   });
   loadYtApp();
   // handle back button
@@ -638,7 +646,9 @@ function init() {
       return;
     }
   });
-  syncReady = true;
+  // syncReady is set after initial cloud pull completes (in setTimeout above)
+  // If no syncUrl, set it immediately so local-only mode works
+  if (!syncUrl) syncReady = true;
 }
 
 /* ===== LOCAL STORAGE ===== */
@@ -647,6 +657,8 @@ function loadLocal() {
   try { folders = JSON.parse(localStorage.getItem(LS_FOLDERS)) || ['All']; } catch(e) { folders = ['All']; }
   if (!folders.includes('All')) folders.unshift('All');
   try { playerState = JSON.parse(localStorage.getItem(LS_PLAYER)) || playerState; } catch(e) {}
+  _lastModified = parseInt(localStorage.getItem('pcc_lastModified') || '0') || 0;
+  loadDeletedIds();
   // load episode caches
   podcasts.forEach(p => {
     try { episodeCache[p.id] = JSON.parse(localStorage.getItem(LS_EPISODES + p.id)) || []; } catch(e) { episodeCache[p.id] = []; }
@@ -654,14 +666,16 @@ function loadLocal() {
 }
 
 function saveLocal() {
+  _lastModified = Date.now();
   localStorage.setItem(LS_PODCASTS, JSON.stringify(podcasts));
   localStorage.setItem(LS_FOLDERS, JSON.stringify(folders));
   localStorage.setItem(LS_PLAYER, JSON.stringify(playerState));
+  localStorage.setItem('pcc_lastModified', String(_lastModified));
   // save episode caches
   Object.keys(episodeCache).forEach(id => {
     localStorage.setItem(LS_EPISODES + id, JSON.stringify(episodeCache[id]));
   });
-  schedulePush();
+  syncToCloud();
 }
 
 /* ===== CLOUD SYNC ===== */
@@ -685,54 +699,170 @@ function jsonpFetch(url, cb) {
   document.head.appendChild(script);
 }
 
-function schedulePush() {
-  if (!syncReady || !syncUrl) return;
-  clearTimeout(pushTimeout);
-  pushTimeout = setTimeout(() => pushToCloud(), 2000);
+let _lastModified = 0;
+let _deletedPodcastIds = [];
+
+function loadDeletedIds() {
+  try { _deletedPodcastIds = JSON.parse(localStorage.getItem('pcc_deletedIds') || '[]'); } catch(e) { _deletedPodcastIds = []; }
+}
+function saveDeletedIds() {
+  localStorage.setItem('pcc_deletedIds', JSON.stringify(_deletedPodcastIds));
 }
 
-function pushToCloud() {
-  if (!syncUrl || podcasts.length === 0) return;
-  const data = { podcasts, folders, episodePlayed: {} };
-  // collect played/pinned status
+function syncToCloud() {
+  if (!syncReady || !syncUrl) return;
+  if (!podcasts || podcasts.length === 0) return;
+  doSync(false);
+}
+
+function buildSyncPayload() {
+  const payload = { podcasts, folders, episodePlayed: {}, deletedPodcastIds: _deletedPodcastIds, lastModified: _lastModified };
   Object.keys(episodeCache).forEach(id => {
-    data.episodePlayed[id] = (episodeCache[id] || [])
+    payload.episodePlayed[id] = (episodeCache[id] || [])
       .filter(ep => ep.played || ep.pinned)
       .map(ep => ({ guid: ep.guid, played: ep.played, pinned: ep.pinned, progress: ep.progress || 0 }));
   });
-  const encoded = encodeURIComponent(JSON.stringify(data));
-  fireGet(syncUrl + '?action=podcast_sync_push&data=' + encoded);
+  return payload;
 }
 
-function pullFromCloud() {
-  if (!syncUrl) return;
+function doSync(showFeedback) {
+  if (!syncUrl) { if (showFeedback) toast('No sync URL set'); return; }
+  if (showFeedback) toast('Syncing...');
+
+  // Step 1: Pull latest from cloud
   jsonpFetch(syncUrl + '?action=podcast_sync_pull', (err, resp) => {
-    if (err || !resp || !resp.data) return;
-    const cloud = resp.data;
-    if (cloud.podcasts && cloud.podcasts.length > 0) {
-      podcasts = cloud.podcasts;
-      if (cloud.folders) folders = cloud.folders;
+    var cloud = null;
+    if (!err && resp && resp.data) {
+      cloud = resp.data;
+    }
+
+    // Step 2: Merge cloud data into local
+    if (cloud && cloud.podcasts && cloud.podcasts.length > 0) {
+      // Merge deletedPodcastIds from both sides
+      const localDeleted = new Set(_deletedPodcastIds);
+      const cloudDeleted = new Set(cloud.deletedPodcastIds || []);
+      for (const did of cloudDeleted) {
+        if (!localDeleted.has(did)) _deletedPodcastIds.push(did);
+      }
+      const allDeleted = new Set(_deletedPodcastIds);
+
+      // Remove locally any podcasts the other device unsubscribed
+      podcasts = podcasts.filter(p => !cloudDeleted.has(p.id));
+
+      // Merge cloud podcasts we don't have locally
+      const localPodIds = new Set(podcasts.map(p => p.id));
+      let merged = 0;
+      for (const cp of cloud.podcasts) {
+        if (cp.id && !localPodIds.has(cp.id) && !allDeleted.has(cp.id)) {
+          podcasts.push(cp);
+          merged++;
+        }
+      }
+
+      // Merge folders (union)
+      if (cloud.folders) {
+        for (const f of cloud.folders) {
+          if (!folders.includes(f)) folders.push(f);
+        }
+      }
       if (!folders.includes('All')) folders.unshift('All');
-      // merge played status
+
+      // Merge played/pinned status from cloud
       if (cloud.episodePlayed) {
         Object.keys(cloud.episodePlayed).forEach(id => {
+          if (allDeleted.has(id)) return;
           const statuses = cloud.episodePlayed[id] || [];
           const eps = episodeCache[id] || [];
           statuses.forEach(s => {
             const ep = eps.find(e => e.guid === s.guid);
-            if (ep) { ep.played = s.played; ep.pinned = s.pinned; ep.progress = s.progress || 0; }
+            if (ep) {
+              if (s.played) ep.played = true;
+              if (s.pinned) ep.pinned = true;
+              if ((s.progress || 0) > (ep.progress || 0)) ep.progress = s.progress;
+            }
           });
           episodeCache[id] = eps;
         });
       }
-      localStorage.setItem(LS_PODCASTS, JSON.stringify(podcasts));
-      localStorage.setItem(LS_FOLDERS, JSON.stringify(folders));
-      Object.keys(episodeCache).forEach(id => {
-        localStorage.setItem(LS_EPISODES + id, JSON.stringify(episodeCache[id]));
-      });
-      renderLibrary();
-      renderFolders();
+
+      if (merged > 0) {
+        // Save merged data to localStorage
+        localStorage.setItem(LS_PODCASTS, JSON.stringify(podcasts));
+        localStorage.setItem(LS_FOLDERS, JSON.stringify(folders));
+        Object.keys(episodeCache).forEach(id => {
+          localStorage.setItem(LS_EPISODES + id, JSON.stringify(episodeCache[id]));
+        });
+        saveDeletedIds();
+        renderLibrary();
+        renderFolders();
+      }
     }
+
+    // Step 3: Push merged data to cloud via POST
+    const payload = JSON.stringify(buildSyncPayload());
+    fetch(syncUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'save', data: payload })
+    }).then(() => {
+      if (showFeedback) toast('Synced ' + podcasts.length + ' podcasts');
+    }).catch(e => {
+      if (showFeedback) toast('Sync failed');
+    });
+  });
+}
+
+function pullFromCloud(showToast) {
+  if (!syncUrl) return;
+  jsonpFetch(syncUrl + '?action=podcast_sync_pull', (err, resp) => {
+    if (err || !resp || !resp.data) {
+      if (showToast) toast('Cloud fetch failed');
+      return;
+    }
+    const cloud = resp.data;
+    if (!cloud.podcasts) return;
+    var localEmpty = !podcasts || podcasts.length === 0;
+    if (!showToast && !localEmpty) {
+      if (_lastModified && (!cloud.lastModified || _lastModified >= cloud.lastModified)) return;
+    }
+    // Preserve local deletedPodcastIds before overwrite
+    var savedDeleted = _deletedPodcastIds.slice();
+    podcasts = cloud.podcasts;
+    if (cloud.folders) folders = cloud.folders;
+    if (!folders.includes('All')) folders.unshift('All');
+    // Merge back deleted IDs
+    _deletedPodcastIds = cloud.deletedPodcastIds || [];
+    for (var i = 0; i < savedDeleted.length; i++) {
+      if (_deletedPodcastIds.indexOf(savedDeleted[i]) === -1) _deletedPodcastIds.push(savedDeleted[i]);
+    }
+    // Filter out deleted podcasts
+    if (_deletedPodcastIds.length > 0) {
+      var delSet = new Set(_deletedPodcastIds);
+      podcasts = podcasts.filter(p => !delSet.has(p.id));
+    }
+    if (cloud.lastModified) _lastModified = cloud.lastModified;
+    // Merge played status
+    if (cloud.episodePlayed) {
+      Object.keys(cloud.episodePlayed).forEach(id => {
+        const statuses = cloud.episodePlayed[id] || [];
+        const eps = episodeCache[id] || [];
+        statuses.forEach(s => {
+          const ep = eps.find(e => e.guid === s.guid);
+          if (ep) { ep.played = s.played; ep.pinned = s.pinned; ep.progress = s.progress || 0; }
+        });
+        episodeCache[id] = eps;
+      });
+    }
+    localStorage.setItem(LS_PODCASTS, JSON.stringify(podcasts));
+    localStorage.setItem(LS_FOLDERS, JSON.stringify(folders));
+    Object.keys(episodeCache).forEach(id => {
+      localStorage.setItem(LS_EPISODES + id, JSON.stringify(episodeCache[id]));
+    });
+    saveDeletedIds();
+    renderLibrary();
+    renderFolders();
+    if (showToast) toast('Restored ' + podcasts.length + ' podcasts from cloud');
   });
 }
 
@@ -741,8 +871,8 @@ function saveSyncUrl() {
   localStorage.setItem(LS_SYNC_URL, syncUrl);
   if (syncUrl) {
     document.getElementById('syncStatus').textContent = 'Connected';
-    pushToCloud();
-    toast('Sync connected!');
+    syncReady = true;
+    doSync(true);
   } else {
     document.getElementById('syncStatus').textContent = 'Not configured';
   }
@@ -1498,6 +1628,8 @@ function editPodcast(id) {
 
 function unsubscribe(id) {
   if (!confirm('Unsubscribe from this podcast?')) return;
+  _deletedPodcastIds.push(id);
+  saveDeletedIds();
   podcasts = podcasts.filter(p => p.id !== id);
   delete episodeCache[id];
   localStorage.removeItem(LS_EPISODES + id);
