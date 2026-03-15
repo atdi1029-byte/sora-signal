@@ -99,7 +99,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .folder-chip.active{background:rgba(0,212,255,0.12);color:var(--accent);border-color:var(--accent);box-shadow:var(--neon-cyan)}
 
 /* ===== PODCAST GRID (LIBRARY) ===== */
-.podcast-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.podcast-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .podcast-card{
   background:var(--card);border-radius:var(--radius);overflow:hidden;
   border:1px solid var(--border);transition:all .2s;position:relative;
@@ -377,7 +377,7 @@ body::after{
 .podcast-card:active::after{opacity:1}
 
 @media(min-width:500px){
-  .podcast-grid{grid-template-columns:repeat(3,1fr)}
+  .podcast-grid{grid-template-columns:repeat(4,1fr)}
 }
 @media(max-width:768px){
   html{background-size:cover;background-position:center center}
@@ -412,7 +412,10 @@ body::after{
       <input type="text" id="searchInput" placeholder="Search podcasts..." oninput="onSearchInput(this.value)">
     </div>
     <div id="searchResults" class="search-results" style="display:none"></div>
-    <div id="folderBar" class="folder-bar"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div id="folderBar" class="folder-bar" style="flex:1"></div>
+      <button onclick="refreshAll()" title="Refresh all" style="padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:16px;cursor:pointer;flex-shrink:0">&#x21bb;</button>
+    </div>
     <div id="podcastGrid" class="podcast-grid"></div>
     <div id="emptyLibrary" class="empty-state" style="display:none">
       <svg><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
@@ -1644,6 +1647,11 @@ function toggleSleepTimer() {
 function refreshPodcast(id) {
   toast('Refreshing...');
   fetchEpisodes(id);
+}
+
+function refreshAll() {
+  toast('Refreshing all...');
+  podcasts.forEach(p => fetchEpisodes(p.id));
 }
 
 function editPodcast(id) {
