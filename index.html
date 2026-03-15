@@ -714,16 +714,14 @@ function buildSyncPayload() {
     const fromCache = eps
       .filter(ep => ep.played || ep.pinned)
       .map(ep => ({ guid: ep.guid, played: ep.played, pinned: ep.pinned, progress: ep.progress || 0 }));
-    if (fromCache.length > 0) {
-      // Episode cache has played data — use it (it's the freshest)
-      payload.episodePlayed[id] = fromCache;
-    } else {
-      // No played episodes in cache — preserve cloud played data so we don't overwrite it
-      try {
-        const cloud = JSON.parse(localStorage.getItem('pcc_cloud_played_' + id) || '[]');
-        if (cloud.length > 0) payload.episodePlayed[id] = cloud;
-      } catch(e) {}
-    }
+    // Merge cache + cloud played data (cloud may have older episodes that dropped off RSS)
+    let cloudPlayed = [];
+    try { cloudPlayed = JSON.parse(localStorage.getItem('pcc_cloud_played_' + id) || '[]'); } catch(e) {}
+    const merged = new Map();
+    cloudPlayed.forEach(s => { if (s.played || s.pinned) merged.set(s.guid, s); });
+    fromCache.forEach(s => merged.set(s.guid, s)); // cache overrides cloud (fresher)
+    const result = Array.from(merged.values());
+    if (result.length > 0) payload.episodePlayed[id] = result;
   });
   return payload;
 }
