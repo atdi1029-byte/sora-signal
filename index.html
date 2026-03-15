@@ -1064,7 +1064,7 @@ function confirmManual() {
   saveLocal();
   closeManualModal();
   toast('Added ' + pod.title);
-  if (rss) fetchEpisodes(pod.id);
+  if (rss || pod.youtubeUrl) fetchEpisodes(pod.id);
   renderLibrary();
 }
 
@@ -1294,59 +1294,75 @@ function togglePinned(podId, guid) {
 /* ===== FETCH EPISODES (RSS) ===== */
 async function fetchEpisodes(podId) {
   const pod = podcasts.find(p => p.id === podId);
-  if (!pod || !pod.rssUrl) return;
+  if (!pod) return;
 
   try {
-    let xml;
-    // try direct fetch first
-    try {
-      const resp = await fetch(pod.rssUrl);
-      const text = await resp.text();
-      xml = new DOMParser().parseFromString(text, 'text/xml');
-    } catch (e) {
-      // CORS blocked — try proxy via Apps Script
-      if (SYNC_URL) {
-        xml = await fetchRSSProxy(pod.rssUrl);
-      } else {
-        throw e;
+    const existing = episodeCache[podId] || [];
+    let newEps = [];
+
+    // fetch RSS episodes if feed URL is set
+    if (pod.rssUrl) {
+      let xml;
+      // try direct fetch first
+      try {
+        const resp = await fetch(pod.rssUrl);
+        const text = await resp.text();
+        xml = new DOMParser().parseFromString(text, 'text/xml');
+      } catch (e) {
+        // CORS blocked — try proxy via Apps Script
+        if (SYNC_URL) {
+          xml = await fetchRSSProxy(pod.rssUrl);
+        } else {
+          throw e;
+        }
+      }
+
+      if (xml) {
+        const items = xml.querySelectorAll('item');
+        newEps = Array.from(items).map(item => {
+          const guid = (item.querySelector('guid')?.textContent || item.querySelector('title')?.textContent || '').trim();
+          const title = (item.querySelector('title')?.textContent || '').trim();
+          const enclosure = item.querySelector('enclosure');
+          const audioUrl = enclosure ? enclosure.getAttribute('url') : '';
+          const date = item.querySelector('pubDate')?.textContent || '';
+          // itunes:duration
+          const durEl = item.getElementsByTagName('itunes:duration')[0];
+          const duration = durEl ? durEl.textContent.trim() : '';
+
+          // preserve existing played/pinned/progress state
+          const old = existing.find(e => e.guid === guid);
+          // Also check cloud played data (survives cache clears)
+          let cloudStatus = null;
+          try {
+            const cp = JSON.parse(localStorage.getItem('pcc_cloud_played_' + podId) || '[]');
+            cloudStatus = cp.find(s => s.guid === guid);
+          } catch(e) {}
+          return {
+            guid,
+            title,
+            audioUrl,
+            date,
+            duration: formatDuration(duration),
+            youtubeUrl: '',
+            spotifyUrl: '',
+            played: old?.played || cloudStatus?.played || false,
+            pinned: old?.pinned || cloudStatus?.pinned || false,
+            progress: old?.progress || cloudStatus?.progress || 0
+          };
+        });
+
+        // update artwork from feed if not set
+        if (!pod.artwork) {
+          const img = xml.querySelector('channel image url')?.textContent ||
+                      xml.querySelector('channel')?.getElementsByTagName('itunes:image')[0]?.getAttribute('href');
+          if (img) {
+            pod.artwork = img;
+            saveLocal();
+            renderLibrary();
+          }
+        }
       }
     }
-
-    if (!xml) return;
-    const items = xml.querySelectorAll('item');
-    const existing = episodeCache[podId] || [];
-
-    const newEps = Array.from(items).map(item => {
-      const guid = (item.querySelector('guid')?.textContent || item.querySelector('title')?.textContent || '').trim();
-      const title = (item.querySelector('title')?.textContent || '').trim();
-      const enclosure = item.querySelector('enclosure');
-      const audioUrl = enclosure ? enclosure.getAttribute('url') : '';
-      const date = item.querySelector('pubDate')?.textContent || '';
-      // itunes:duration
-      const durEl = item.getElementsByTagName('itunes:duration')[0];
-      const duration = durEl ? durEl.textContent.trim() : '';
-
-      // preserve existing played/pinned/progress state
-      const old = existing.find(e => e.guid === guid);
-      // Also check cloud played data (survives cache clears)
-      let cloudStatus = null;
-      try {
-        const cp = JSON.parse(localStorage.getItem('pcc_cloud_played_' + podId) || '[]');
-        cloudStatus = cp.find(s => s.guid === guid);
-      } catch(e) {}
-      return {
-        guid,
-        title,
-        audioUrl,
-        date,
-        duration: formatDuration(duration),
-        youtubeUrl: '',
-        spotifyUrl: '',
-        played: old?.played || cloudStatus?.played || false,
-        pinned: old?.pinned || cloudStatus?.pinned || false,
-        progress: old?.progress || cloudStatus?.progress || 0
-      };
-    });
 
     // merge YouTube videos if channel is linked (via Apps Script YouTube Data API)
     if (pod.youtubeUrl) {
@@ -1367,17 +1383,6 @@ async function fetchEpisodes(podId) {
     episodeCache[podId] = newEps;
     saveLocal();
     if (currentPodcastId === podId && currentView === 'podcast') renderPodcastDetail();
-
-    // update artwork from feed if not set
-    if (!pod.artwork) {
-      const img = xml.querySelector('channel image url')?.textContent ||
-                  xml.querySelector('channel')?.getElementsByTagName('itunes:image')[0]?.getAttribute('href');
-      if (img) {
-        pod.artwork = img;
-        saveLocal();
-        renderLibrary();
-      }
-    }
   } catch (e) {
     console.error('Failed to fetch episodes for', pod.title, e);
   }
