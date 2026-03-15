@@ -33,6 +33,12 @@ function doGet(e) {
       case 'podcast_sync_push':
         result = pushData_(e.parameter.data);
         break;
+      case 'podcast_save_chunk':
+        result = handleSaveChunk_(e);
+        break;
+      case 'podcast_save_done':
+        result = handleSaveDone_(e);
+        break;
       case 'fetch_rss':
         return fetchRSS_(e.parameter.url, callback);
       case 'fetch_youtube':
@@ -86,6 +92,32 @@ function pushData_(dataStr) {
   return { ok: true, timestamp: Date.now() };
 }
 
+// ===== CHUNKED SAVE (JSONP GET) =====
+
+function handleSaveChunk_(e) {
+  var idx = parseInt(e.parameter.i || '0');
+  var chunk = e.parameter.cd || '';
+  var sheet = getSheet_();
+  sheet.getRange('C' + (idx + 1)).setValue(chunk);
+  return { ok: true, chunk: idx };
+}
+
+function handleSaveDone_(e) {
+  var total = parseInt(e.parameter.n || '1');
+  var sheet = getSheet_();
+  var fullData = '';
+  for (var i = 0; i < total; i++) {
+    fullData += (sheet.getRange('C' + (i + 1)).getValue() || '');
+  }
+  sheet.getRange('A1').setValue(fullData);
+  sheet.getRange('B1').setValue(Date.now());
+  // Clear chunk cells
+  for (var i = 0; i < total; i++) {
+    sheet.getRange('C' + (i + 1)).clearContent();
+  }
+  return { ok: true, timestamp: Date.now() };
+}
+
 // ===== RSS PROXY =====
 
 function fetchRSS_(url, callback) {
@@ -135,10 +167,12 @@ function fetchYouTubeVideos_(channelInput) {
   const channelId = resolveYouTubeChannel_(channelInput);
   if (!channelId) return { error: 'Could not resolve channel: ' + channelInput };
 
-  // Get uploads playlist ID
-  const channelResp = YouTube.Channels.list('contentDetails', { id: channelId });
+  // Get uploads playlist ID + channel thumbnail
+  const channelResp = YouTube.Channels.list('contentDetails,snippet', { id: channelId });
   if (!channelResp.items || !channelResp.items.length) return { error: 'Channel not found' };
   const uploadsId = channelResp.items[0].contentDetails.relatedPlaylists.uploads;
+  const channelThumb = (channelResp.items[0].snippet.thumbnails && channelResp.items[0].snippet.thumbnails.high)
+    ? channelResp.items[0].snippet.thumbnails.high.url : '';
 
   // Fetch all videos from uploads playlist (paginated)
   const videos = [];
@@ -178,7 +212,7 @@ function fetchYouTubeVideos_(channelInput) {
     maxPages--;
   } while (pageToken && maxPages > 0);
 
-  return { videos: videos, count: videos.length, channelId: channelId };
+  return { videos: videos, count: videos.length, channelId: channelId, channelThumbnail: channelThumb };
 }
 
 // Parse ISO 8601 duration (PT1H2M3S) to seconds

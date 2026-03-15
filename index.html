@@ -1436,6 +1436,13 @@ async function mergeYouTubeEpisodes(podId, channelUrl, episodes) {
         });
       }
     });
+    // use channel thumbnail as podcast artwork if none set
+    const pod = podcasts.find(p => p.id === podId);
+    if (pod && !pod.artwork && data.channelThumbnail) {
+      pod.artwork = data.channelThumbnail;
+      saveLocal();
+      renderLibrary();
+    }
     console.log('YouTube: merged ' + (data.count || 0) + ' videos');
   } catch (e) {
     console.error('YouTube merge failed:', e);
