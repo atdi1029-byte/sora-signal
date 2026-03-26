@@ -574,6 +574,9 @@ let playerState = { podcastId:null, episodeGuid:null, currentTime:0, playbackRat
 let sleepTimerId = null;
 const SYNC_URL = 'https://script.google.com/macros/s/AKfycbxXtFFz80cS6x9mgCaXMU6Tbvgu3x7wknr1IdtAhX_-YXN4-xN7CQtTKaKXJQgHJ9316A/exec';
 let syncReady = false;
+var _saveInFlight = false;
+var _savePending = false;
+var _syncDebounce = null;
 let ytApp = 'default'; // default|revanced|newpipe|custom
 let ytCustomPkg = '';
 
@@ -623,9 +626,21 @@ function init() {
       doSync(false, function() { syncReady = true; });
     }
   }, 1500);
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && syncReady) doSync(false);
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && syncReady) {
+      mergeFromCloud(false);
+    } else if (document.visibilityState === 'hidden' && syncReady) {
+      if (_syncDebounce) { clearTimeout(_syncDebounce); _syncDebounce = null; }
+      _doCloudSave(false);
+    }
   });
+  document.addEventListener('pagehide', function() {
+    if (!syncReady) return;
+    beaconSave();
+  });
+  setInterval(function() {
+    if (syncReady && document.visibilityState === 'visible') mergeFromCloud(false);
+  }, 30000);
   loadYtApp();
   // handle back button
   history.replaceState({ view: 'library' }, '');
@@ -704,7 +719,13 @@ function saveDeletedIds() {
 function syncToCloud() {
   if (!syncReady) return;
   if (!podcasts || podcasts.length === 0) return;
-  doSync(false);
+  clearTimeout(_syncDebounce);
+  _syncDebounce = setTimeout(function() {
+    _syncDebounce = null;
+    mergeFromCloud(false, function() {
+      _doCloudSave(false);
+    });
+  }, 1500);
 }
 
 function buildSyncPayload() {
@@ -759,59 +780,71 @@ function pushToCloudChunked(onDone) {
   }
 }
 
-function doSync(showFeedback, onComplete) {
-  if (showFeedback) toast('Syncing...');
-
-  // Step 1: Pull latest from cloud
-  jsonpFetch(SYNC_URL + '?action=podcast_sync_pull', (err, resp) => {
-    var cloud = null;
-    if (!err && resp && resp.data) {
-      cloud = resp.data;
+function _doCloudSave(showFeedback) {
+  if (_saveInFlight) { _savePending = true; return; }
+  if (!podcasts || podcasts.length === 0) return;
+  _saveInFlight = true;
+  var syncData = JSON.stringify(buildSyncPayload());
+  var CHUNK = 1800;
+  var chunks = [];
+  for (var i = 0; i < syncData.length; i += CHUNK) chunks.push(syncData.substring(i, i + CHUNK));
+  var chunkIdx = 0;
+  var retries = 0;
+  function sendNext() {
+    if (chunkIdx >= chunks.length) {
+      jsonpFetch(SYNC_URL + '?action=podcast_save_done&n=' + chunks.length, function(err, resp) {
+        _saveInFlight = false;
+        if (showFeedback) toast(err ? 'Sync failed' : 'Synced ' + podcasts.length + ' podcasts');
+        if (_savePending) { _savePending = false; setTimeout(function() { _doCloudSave(false); }, 1000); }
+      });
+      return;
     }
+    var url = SYNC_URL + '?action=podcast_save_chunk&i=' + chunkIdx + '&cd=' + encodeURIComponent(chunks[chunkIdx]);
+    jsonpFetch(url, function(err) {
+      if (!err) { chunkIdx++; retries = 0; sendNext(); }
+      else if (retries < 2) { retries++; setTimeout(sendNext, 500); }
+      else { _saveInFlight = false; if (_savePending) { _savePending = false; setTimeout(function() { _doCloudSave(false); }, 2000); } }
+    });
+  }
+  sendNext();
+}
 
+function mergeFromCloud(showFeedback, onComplete) {
+  jsonpFetch(SYNC_URL + '?action=podcast_sync_pull', function(err, resp) {
+    var cloud = null;
+    if (!err && resp && resp.data) cloud = resp.data;
     var changed = false;
-
-    // Step 2: Merge cloud data into local
     if (cloud && cloud.podcasts && cloud.podcasts.length > 0) {
-      // Merge deletedPodcastIds from both sides
-      const localDeleted = new Set(_deletedPodcastIds);
-      const cloudDeleted = new Set(cloud.deletedPodcastIds || []);
-      for (const did of cloudDeleted) {
+      var localDeleted = new Set(_deletedPodcastIds);
+      var cloudDeleted = new Set(cloud.deletedPodcastIds || []);
+      for (var did of cloudDeleted) {
         if (!localDeleted.has(did)) { _deletedPodcastIds.push(did); changed = true; }
       }
-      const allDeleted = new Set(_deletedPodcastIds);
-
-      // Remove locally any podcasts the other device unsubscribed
+      var allDeleted = new Set(_deletedPodcastIds);
       var beforeLen = podcasts.length;
-      podcasts = podcasts.filter(p => !cloudDeleted.has(p.id));
+      podcasts = podcasts.filter(function(p) { return !cloudDeleted.has(p.id); });
       if (podcasts.length !== beforeLen) changed = true;
-
-      // Merge cloud podcasts we don't have locally
-      const localPodIds = new Set(podcasts.map(p => p.id));
-      for (const cp of cloud.podcasts) {
+      var localPodIds = new Set(podcasts.map(function(p) { return p.id; }));
+      for (var i = 0; i < cloud.podcasts.length; i++) {
+        var cp = cloud.podcasts[i];
         if (cp.id && !localPodIds.has(cp.id) && !allDeleted.has(cp.id)) {
-          podcasts.push(cp);
-          changed = true;
+          podcasts.push(cp); changed = true;
         }
       }
-
-      // Merge folders (union)
       if (cloud.folders) {
-        for (const f of cloud.folders) {
-          if (!folders.includes(f)) { folders.push(f); changed = true; }
+        for (var j = 0; j < cloud.folders.length; j++) {
+          if (!folders.includes(cloud.folders[j])) { folders.push(cloud.folders[j]); changed = true; }
         }
       }
       if (!folders.includes('All')) folders.unshift('All');
-
-      // Merge played/pinned status from cloud + persist for RSS refresh
       if (cloud.episodePlayed) {
-        Object.keys(cloud.episodePlayed).forEach(id => {
+        Object.keys(cloud.episodePlayed).forEach(function(id) {
           if (allDeleted.has(id)) return;
-          const statuses = cloud.episodePlayed[id] || [];
+          var statuses = cloud.episodePlayed[id] || [];
           localStorage.setItem('pcc_cloud_played_' + id, JSON.stringify(statuses));
-          const eps = episodeCache[id] || [];
-          statuses.forEach(s => {
-            const ep = eps.find(e => e.guid === s.guid);
+          var eps = episodeCache[id] || [];
+          statuses.forEach(function(s) {
+            var ep = eps.find(function(e) { return e.guid === s.guid; });
             if (ep) {
               if (s.played && !ep.played) { ep.played = true; changed = true; }
               if (s.pinned && !ep.pinned) { ep.pinned = true; changed = true; }
@@ -821,25 +854,42 @@ function doSync(showFeedback, onComplete) {
           episodeCache[id] = eps;
         });
       }
-
       if (changed) {
-        // Save merged data to localStorage
         localStorage.setItem(LS_PODCASTS, JSON.stringify(podcasts));
         localStorage.setItem(LS_FOLDERS, JSON.stringify(folders));
-        Object.keys(episodeCache).forEach(id => {
+        Object.keys(episodeCache).forEach(function(id) {
           localStorage.setItem(LS_EPISODES + id, JSON.stringify(episodeCache[id]));
         });
         saveDeletedIds();
         renderLibrary();
         renderFolders();
+        if (showFeedback) toast('Merged from cloud');
       }
     }
+    if (onComplete) onComplete();
+  });
+}
 
-    // Step 3: Push merged data to cloud via JSONP chunked GET
-    pushToCloudChunked(function(pushErr) {
-      if (showFeedback) toast(pushErr ? 'Sync failed' : 'Synced ' + podcasts.length + ' podcasts');
-      if (onComplete) onComplete();
-    });
+function beaconSave() {
+  if (!syncReady || _saveInFlight) return;
+  if (!podcasts || podcasts.length === 0) return;
+  var syncData = JSON.stringify(buildSyncPayload());
+  var CHUNK = 1800;
+  var chunks = [];
+  for (var i = 0; i < syncData.length; i += CHUNK) chunks.push(syncData.substring(i, i + CHUNK));
+  for (var c = 0; c < chunks.length; c++) {
+    fireGet(SYNC_URL + '?action=podcast_save_chunk&i=' + c + '&cd=' + encodeURIComponent(chunks[c]));
+  }
+  setTimeout(function() {
+    fireGet(SYNC_URL + '?action=podcast_save_done&n=' + chunks.length);
+  }, 300);
+}
+
+function doSync(showFeedback, onComplete) {
+  if (showFeedback) toast('Syncing...');
+  mergeFromCloud(showFeedback, function() {
+    _doCloudSave(showFeedback);
+    if (onComplete) onComplete();
   });
 }
 
